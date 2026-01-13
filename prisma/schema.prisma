@@ -1,0 +1,475 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  VISITOR
+  SHOP
+  FARM
+  ADMIN
+}
+
+enum BusinessType {
+  SHOP
+  FARM
+  BOTH
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PRO
+  PREMIUM
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum TourStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ACTIVE
+  COMPLETED
+}
+
+enum MilkType {
+  COW
+  GOAT
+  SHEEP
+  BUFFALO
+  MIXED
+}
+
+enum CheeseTexture {
+  SOFT
+  SEMI_SOFT
+  SEMI_HARD
+  HARD
+  BLUE
+  FRESH
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          UserRole  @default(VISITOR)
+  language      String    @default("fr")
+  country       String    @default("FR")
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  business      Business?
+  orders        Order[]
+  bookings      Booking[]
+  reviews       Review[]
+  passportStamps PassportStamp[]
+  favorites     Favorite[]
+
+  @@map("users")
+}
+
+model Business {
+  id               String         @id @default(cuid())
+  userId           String         @unique
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name             String
+  slug             String         @unique
+  businessType     BusinessType
+  description      String?
+  story            String?
+  
+  // Location (France only)
+  address          String
+  city             String
+  postalCode       String
+  regionId         String
+  region           FrenchRegion   @relation(fields: [regionId], references: [id])
+  latitude         Float
+  longitude        Float
+  
+  // Contact
+  phone            String?
+  website          String?
+  
+  // Features
+  toursEnabled     Boolean        @default(false)
+  deliveryEnabled  Boolean        @default(false)
+  verified         Boolean        @default(false)
+  
+  // Subscription
+  plan             SubscriptionPlan @default(FREE)
+  planExpiresAt    DateTime?
+  stripeCustomerId String?
+  
+  // Media
+  logo             String?
+  coverImage       String?
+  images           String[]
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  inventory        InventoryItem[]
+  batches          Batch[]
+  tours            Tour[]
+  orders           Order[]
+  reviews          Review[]
+
+  @@map("businesses")
+}
+
+model FrenchRegion {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  
+  // Region characteristics
+  famousCheeses String[]
+  climate      String?
+  
+  // Geography
+  latitude     Float
+  longitude    Float
+  
+  businesses   Business[]
+  cheeses      Cheese[]
+  passportStamps PassportStamp[]
+  
+  @@map("french_regions")
+}
+
+model Cheese {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  
+  // Classification
+  milkType      MilkType[]
+  texture       CheeseTexture
+  aop           Boolean        @default(false) // Appellation d'Origine Protégée
+  pdo           Boolean        @default(false) // Protected Designation of Origin
+  
+  // Characteristics
+  description   String?
+  tastingNotes  String?
+  pairingTips   String?
+  agingTime     Int?           // in days
+  fatContent    Float?         // percentage
+  strength      Int?           // 1-5 scale
+  
+  // Origin
+  regionId      String?
+  region        FrenchRegion?  @relation(fields: [regionId], references: [id])
+  
+  // Media
+  image         String?
+  
+  inventory     InventoryItem[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@map("cheeses")
+}
+
+model InventoryItem {
+  id            String    @id @default(cuid())
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  cheeseId      String?
+  cheese        Cheese?   @relation(fields: [cheeseId], references: [id])
+  
+  // Product info
+  sku           String?
+  name          String
+  description   String?
+  
+  // Stock
+  quantity      Int       @default(0)
+  unit          String    @default("kg") // kg, piece, etc.
+  price         Float     // in cents
+  
+  // Tracking
+  expiryDate    DateTime?
+  batchId       String?
+  batch         Batch?    @relation(fields: [batchId], references: [id])
+  
+  available     Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  orderItems    OrderItem[]
+  
+  @@map("inventory_items")
+}
+
+model Batch {
+  id              String         @id @default(cuid())
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  batchNumber     String
+  
+  // Production (Farm only)
+  milkSource      String?
+  productionDate  DateTime
+  agingStartDate  DateTime?
+  targetAgingDays Int?
+  
+  // Quantity
+  initialQuantity Float
+  currentQuantity Float
+  unit            String         @default("kg")
+  
+  // Quality
+  qualityNotes    String?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  inventory       InventoryItem[]
+  
+  @@unique([businessId, batchNumber])
+  @@map("batches")
+}
+
+model Tour {
+  id              String      @id @default(cuid())
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  title           String
+  slug            String      @unique
+  description     String
+  
+  // Tour details
+  type            String      // tasting, farm visit, workshop
+  duration        Int         // in minutes
+  capacity        Int
+  price           Float       // in cents
+  
+  // Scheduling
+  availableDays   Int[]       // 0-6 (Sunday-Saturday)
+  startTimes      String[]    // ["10:00", "14:00"]
+  
+  // Safety & Requirements
+  safetyInfo      String?
+  requirements    String?
+  includedItems   String[]
+  
+  // Media
+  images          String[]
+  
+  // Status
+  status          TourStatus  @default(DRAFT)
+  adminNotes      String?
+  
+  active          Boolean     @default(false)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  bookings        Booking[]
+  
+  @@map("tours")
+}
+
+model Booking {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tourId          String
+  tour            Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  
+  // Booking details
+  date            DateTime
+  time            String
+  participants    Int         @default(1)
+  
+  // Payment
+  totalAmount     Float       // in cents
+  commission      Float       // platform commission
+  paid            Boolean     @default(false)
+  stripePaymentId String?
+  
+  // Status
+  confirmed       Boolean     @default(false)
+  cancelled       Boolean     @default(false)
+  cancellationReason String?
+  
+  // Contact
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  specialRequests String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@map("bookings")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessId      String
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  orderNumber     String        @unique
+  
+  // Amounts
+  subtotal        Float         // in cents
+  shippingCost    Float         @default(0)
+  tax             Float         @default(0)
+  total           Float
+  
+  // Delivery
+  deliveryMethod  String        // delivery, click_and_collect
+  deliveryCountry String
+  deliveryAddress String?
+  deliveryCity    String?
+  deliveryPostalCode String?
+  
+  // Tracking
+  status          OrderStatus   @default(PENDING)
+  trackingNumber  String?
+  estimatedDelivery DateTime?
+  
+  // Payment
+  paid            Boolean       @default(false)
+  stripePaymentId String?
+  
+  // Notes
+  customerNotes   String?
+  businessNotes   String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  items           OrderItem[]
+  receipt         Receipt?
+  
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  
+  quantity        Float
+  unitPrice       Float         // in cents
+  totalPrice      Float         // in cents
+  
+  @@map("order_items")
+}
+
+model Receipt {
+  id              String    @id @default(cuid())
+  orderId         String    @unique
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  receiptNumber   String    @unique
+  pdfUrl          String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@map("receipts")
+}
+
+model Review {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessId      String
+  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  rating          Int       // 1-5
+  comment         String?
+  
+  // Verification
+  verified        Boolean   @default(false) // purchased or visited
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("reviews")
+}
+
+model DeliveryCountry {
+  id              String    @id @default(cuid())
+  countryCode     String    @unique // ISO 3166-1 alpha-2
+  countryName     String
+  
+  enabled         Boolean   @default(true)
+  
+  // Shipping
+  baseShippingCost Float    // in cents
+  estimatedDays   Int
+  
+  // Requirements
+  customsInfo     String?
+  restrictions    String?
+  
+  @@map("delivery_countries")
+}
+
+model PassportStamp {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  regionId        String
+  region          FrenchRegion @relation(fields: [regionId], references: [id])
+  
+  // Visit details
+  visitDate       DateTime     @default(now())
+  notes           String?
+  
+  @@unique([userId, regionId])
+  @@map("passport_stamps")
+}
+
+model Favorite {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessId      String
+  
+  createdAt       DateTime  @default(now())
+  
+  @@unique([userId, businessId])
+  @@map("favorites")
+}
