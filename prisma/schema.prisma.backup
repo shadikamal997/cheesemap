@@ -46,7 +46,6 @@ enum VerificationStatus {
 
 enum OrderStatus {
   PENDING
-  CONFIRMED
   PAID
   PREPARING
   READY
@@ -95,9 +94,6 @@ enum TourType {
   WORKSHOP
   CHEESE_MAKING
   PAIRING
-  GUIDED_TOUR
-  VISIT
-  COMBINATION
 }
 
 enum BookingStatus {
@@ -117,7 +113,6 @@ enum BatchStatus {
   DEPLETED
   FAILED
   DISCARDED
-  SOLD
 }
 
 enum MilkType {
@@ -132,9 +127,6 @@ enum UnitType {
   KG
   PIECE
   GRAM_100
-  GRAM
-  LITER
-  PORTION
 }
 
 enum ReportedEntityType {
@@ -700,7 +692,6 @@ model TourBooking {
   bookingNumber     String        @unique
   
   scheduleId        String
-  schedule          TourSchedule  @relation(fields: [scheduleId], references: [id])
   
   tourId            String
   tour              Tour          @relation(fields: [tourId], references: [id])

@@ -1,289 +1,127 @@
-import { PrismaClient, UserRole, BusinessType, MilkType, CheeseTexture, SubscriptionPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🌱 Starting database seed...\n');
 
-  // Create French Regions
-  const regions = await Promise.all([
-    prisma.frenchRegion.create({
-      data: {
-        name: 'Normandie',
-        slug: 'normandie',
-        description: 'Home of Camembert and cream-rich cheeses',
-        famousCheeses: ['Camembert', 'Pont-l\'Évêque', 'Livarot', 'Neufchâtel'],
-        climate: 'Oceanic, mild and humid',
-        latitude: 48.8790,
-        longitude: 0.1709,
-      },
-    }),
-    prisma.frenchRegion.create({
-      data: {
-        name: 'Auvergne-Rhône-Alpes',
-        slug: 'auvergne-rhone-alpes',
-        description: 'Volcanic terroir and mountain cheeses',
-        famousCheeses: ['Saint-Nectaire', 'Cantal', 'Bleu d\'Auvergne', 'Reblochon'],
-        climate: 'Continental with alpine influences',
-        latitude: 45.7167,
-        longitude: 3.0833,
-      },
-    }),
-    prisma.frenchRegion.create({
-      data: {
-        name: 'Bourgogne-Franche-Comté',
-        slug: 'bourgogne-franche-comte',
-        description: 'Land of Comté and traditional methods',
-        famousCheeses: ['Comté', 'Époisses', 'Morbier', 'Mont d\'Or'],
-        climate: 'Semi-continental',
-        latitude: 47.2805,
-        longitude: 4.9994,
-      },
-    }),
-  ]);
-
-  // Create Cheeses
-  const cheeses = await Promise.all([
-    prisma.cheese.create({
-      data: {
-        name: 'Camembert de Normandie',
-        slug: 'camembert-de-normandie',
-        milkType: [MilkType.COW],
-        texture: CheeseTexture.SOFT,
-        aop: true,
-        pdo: true,
-        description: 'Iconic soft cheese with bloomy white rind and creamy interior',
-        tastingNotes: 'Buttery, earthy, mushroom notes when ripe',
-        pairingTips: 'Perfect with fresh baguette, apples, or honey',
-        agingTime: 21,
-        fatContent: 45,
-        strength: 3,
-        regionId: regions[0].id,
-      },
-    }),
-    prisma.cheese.create({
-      data: {
-        name: 'Comté',
-        slug: 'comte',
-        milkType: [MilkType.COW],
-        texture: CheeseTexture.HARD,
-        aop: true,
-        pdo: true,
-        description: 'Mountain cheese with complex nutty flavors',
-        tastingNotes: 'Nutty, fruity, hints of caramel and hazelnuts',
-        pairingTips: 'Excellent with walnuts, dried fruits, and crusty bread',
-        agingTime: 120,
-        fatContent: 45,
-        strength: 2,
-        regionId: regions[2].id,
-      },
-    }),
-    prisma.cheese.create({
-      data: {
-        name: 'Saint-Nectaire',
-        slug: 'saint-nectaire',
-        milkType: [MilkType.COW],
-        texture: CheeseTexture.SEMI_SOFT,
-        aop: true,
-        pdo: true,
-        description: 'Volcanic terroir cheese with grey-pink rind',
-        tastingNotes: 'Earthy, mushroom, walnut flavors',
-        pairingTips: 'Pairs perfectly with country bread, grapes, and fresh fruit',
-        agingTime: 28,
-        fatContent: 45,
-        strength: 2,
-        regionId: regions[1].id,
-      },
-    }),
-  ]);
-
-  // Create Users
-  const hashedPassword = await bcrypt.hash('password123', 10);
-
-  const visitorUser = await prisma.user.create({
-    data: {
-      email: 'visitor@example.com',
-      password: hashedPassword,
-      name: 'Marie Dupont',
-      role: UserRole.VISITOR,
-      language: 'fr',
-      country: 'FR',
+  // ============================================================================
+  // ADMIN USER
+  // ============================================================================
+  console.log('Creating admin user...');
+  const adminPassword = await bcrypt.hash('Admin123!@#', 12);
+  
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@cheesemap.fr' },
+    update: {},
+    create: {
+      email: 'admin@cheesemap.fr',
+      passwordHash: adminPassword,
+      role: 'ADMIN',
+      firstName: 'Admin',
+      lastName: 'CheeseMap',
+      emailVerified: true,
+      isActive: true,
+      locale: 'fr',
+      timezone: 'Europe/Paris',
     },
   });
+  console.log(`✅ Admin user created: ${admin.email}\n`);
 
-  const shopUser = await prisma.user.create({
-    data: {
-      email: 'shop@example.com',
-      password: hashedPassword,
-      name: 'Jean Fromager',
-      role: UserRole.SHOP,
-      language: 'fr',
-      country: 'FR',
-    },
-  });
+  // ============================================================================
+  // DELIVERY ZONES (France + EU Countries)
+  // ============================================================================
+  console.log('Creating delivery zones...');
+  
+  const deliveryZones = [
+    // France (Priority)
+    { countryCode: 'FR', countryName: 'France', isEnabled: true, minOrderAmount: 0, baseDeliveryFee: 5.99, estimatedDaysMin: 1, estimatedDaysMax: 3, requiresCustoms: false },
+    
+    // EU Countries
+    { countryCode: 'BE', countryName: 'Belgium', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 12.99, estimatedDaysMin: 3, estimatedDaysMax: 5, requiresCustoms: false },
+    { countryCode: 'DE', countryName: 'Germany', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 14.99, estimatedDaysMin: 3, estimatedDaysMax: 6, requiresCustoms: false },
+    { countryCode: 'IT', countryName: 'Italy', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 15.99, estimatedDaysMin: 4, estimatedDaysMax: 7, requiresCustoms: false },
+    { countryCode: 'ES', countryName: 'Spain', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 15.99, estimatedDaysMin: 4, estimatedDaysMax: 7, requiresCustoms: false },
+    { countryCode: 'NL', countryName: 'Netherlands', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 13.99, estimatedDaysMin: 3, estimatedDaysMax: 5, requiresCustoms: false },
+    { countryCode: 'LU', countryName: 'Luxembourg', isEnabled: true, minOrderAmount: 40, baseDeliveryFee: 11.99, estimatedDaysMin: 2, estimatedDaysMax: 4, requiresCustoms: false },
+    { countryCode: 'AT', countryName: 'Austria', isEnabled: true, minOrderAmount: 50, baseDeliveryFee: 16.99, estimatedDaysMin: 4, estimatedDaysMax: 7, requiresCustoms: false },
+    { countryCode: 'PT', countryName: 'Portugal', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 18.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'GR', countryName: 'Greece', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 24.99, estimatedDaysMin: 7, estimatedDaysMax: 10, requiresCustoms: false },
+    { countryCode: 'PL', countryName: 'Poland', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 17.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'CZ', countryName: 'Czech Republic', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 17.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'DK', countryName: 'Denmark', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 18.99, estimatedDaysMin: 4, estimatedDaysMax: 7, requiresCustoms: false },
+    { countryCode: 'SE', countryName: 'Sweden', isEnabled: true, minOrderAmount: 70, baseDeliveryFee: 21.99, estimatedDaysMin: 5, estimatedDaysMax: 9, requiresCustoms: false },
+    { countryCode: 'FI', countryName: 'Finland', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 24.99, estimatedDaysMin: 6, estimatedDaysMax: 10, requiresCustoms: false },
+    { countryCode: 'IE', countryName: 'Ireland', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 19.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'HU', countryName: 'Hungary', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 18.99, estimatedDaysMin: 5, estimatedDaysMax: 9, requiresCustoms: false },
+    { countryCode: 'RO', countryName: 'Romania', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 22.99, estimatedDaysMin: 7, estimatedDaysMax: 12, requiresCustoms: false },
+    { countryCode: 'BG', countryName: 'Bulgaria', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 22.99, estimatedDaysMin: 7, estimatedDaysMax: 12, requiresCustoms: false },
+    { countryCode: 'HR', countryName: 'Croatia', isEnabled: false, minOrderAmount: 70, baseDeliveryFee: 21.99, estimatedDaysMin: 6, estimatedDaysMax: 10, requiresCustoms: false },
+    { countryCode: 'SI', countryName: 'Slovenia', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 17.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'SK', countryName: 'Slovakia', isEnabled: true, minOrderAmount: 60, baseDeliveryFee: 17.99, estimatedDaysMin: 5, estimatedDaysMax: 8, requiresCustoms: false },
+    { countryCode: 'EE', countryName: 'Estonia', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 24.99, estimatedDaysMin: 7, estimatedDaysMax: 12, requiresCustoms: false },
+    { countryCode: 'LV', countryName: 'Latvia', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 24.99, estimatedDaysMin: 7, estimatedDaysMax: 12, requiresCustoms: false },
+    { countryCode: 'LT', countryName: 'Lithuania', isEnabled: false, minOrderAmount: 75, baseDeliveryFee: 24.99, estimatedDaysMin: 7, estimatedDaysMax: 12, requiresCustoms: false },
+    { countryCode: 'CY', countryName: 'Cyprus', isEnabled: false, minOrderAmount: 100, baseDeliveryFee: 34.99, estimatedDaysMin: 10, estimatedDaysMax: 15, requiresCustoms: false },
+    { countryCode: 'MT', countryName: 'Malta', isEnabled: false, minOrderAmount: 100, baseDeliveryFee: 34.99, estimatedDaysMin: 10, estimatedDaysMax: 15, requiresCustoms: false },
+  ];
 
-  const farmUser = await prisma.user.create({
-    data: {
-      email: 'farm@example.com',
-      password: hashedPassword,
-      name: 'Pierre Producteur',
-      role: UserRole.FARM,
-      language: 'fr',
-      country: 'FR',
-    },
-  });
+  for (const zone of deliveryZones) {
+    await prisma.deliveryZone.upsert({
+      where: { countryCode: zone.countryCode },
+      update: {},
+      create: zone,
+    });
+  }
+  console.log(`✅ ${deliveryZones.length} delivery zones created\n`);
 
-  // Create Businesses
-  const shopBusiness = await prisma.business.create({
-    data: {
-      userId: shopUser.id,
-      name: 'La Fromagerie Parisienne',
-      slug: 'la-fromagerie-parisienne',
-      businessType: BusinessType.SHOP,
-      description: 'Artisan cheese shop in the heart of Paris',
-      story: 'Family-owned since 1985, we curate the finest French cheeses from small producers across France.',
-      address: '15 Rue de Seine',
-      city: 'Paris',
-      postalCode: '75006',
-      regionId: regions[0].id,
-      latitude: 48.8566,
-      longitude: 2.3522,
-      phone: '+33 1 42 22 50 45',
-      website: 'https://example.com',
-      toursEnabled: true,
-      deliveryEnabled: true,
-      verified: true,
-      plan: SubscriptionPlan.PRO,
-    },
-  });
+  // ============================================================================
+  // ACHIEVEMENTS
+  // ============================================================================
+  console.log('Creating achievements...');
+  
+  const achievements = [
+    // Common Achievements
+    { code: 'FIRST_VISIT', name: 'First Steps', description: 'Visit your first fromagerie or farm', iconUrl: '/achievements/first-visit.svg', requirementType: 'STAMPS_COUNT', requirementValue: 1, rarity: 'COMMON' },
+    { code: 'FIRST_PURCHASE', name: 'Cheese Lover', description: 'Make your first cheese purchase', iconUrl: '/achievements/first-purchase.svg', requirementType: 'ORDERS_COUNT', requirementValue: 1, rarity: 'COMMON' },
+    { code: 'FIRST_REVIEW', name: 'Critic', description: 'Leave your first review', iconUrl: '/achievements/first-review.svg', requirementType: 'REVIEWS_COUNT', requirementValue: 1, rarity: 'COMMON' },
+    { code: 'EXPLORER_5', name: 'Local Explorer', description: 'Visit 5 different cheese places', iconUrl: '/achievements/explorer-5.svg', requirementType: 'STAMPS_COUNT', requirementValue: 5, rarity: 'COMMON' },
+    
+    // Rare Achievements
+    { code: 'EXPLORER_10', name: 'Cheese Tourist', description: 'Visit 10 different cheese places', iconUrl: '/achievements/explorer-10.svg', requirementType: 'STAMPS_COUNT', requirementValue: 10, rarity: 'RARE' },
+    { code: 'REGIONAL_EXPERT', name: 'Regional Expert', description: 'Visit all cheese places in 3 different regions', iconUrl: '/achievements/regional-expert.svg', requirementType: 'REGIONS_VISITED', requirementValue: 3, rarity: 'RARE' },
+    { code: 'AOP_COLLECTOR', name: 'AOP Collector', description: 'Try 10 different AOP cheeses', iconUrl: '/achievements/aop-collector.svg', requirementType: 'AOP_CHEESES_COUNT', requirementValue: 10, rarity: 'RARE' },
+    { code: 'FARM_FRIEND', name: 'Farm Friend', description: 'Visit 5 different farms', iconUrl: '/achievements/farm-friend.svg', requirementType: 'FARMS_VISITED', requirementValue: 5, rarity: 'RARE' },
+    
+    // Epic Achievements
+    { code: 'EXPLORER_25', name: 'Cheese Connoisseur', description: 'Visit 25 different cheese places', iconUrl: '/achievements/explorer-25.svg', requirementType: 'STAMPS_COUNT', requirementValue: 25, rarity: 'EPIC' },
+    { code: 'TOUR_MASTER', name: 'Tour Master', description: 'Complete 10 farm tours or tastings', iconUrl: '/achievements/tour-master.svg', requirementType: 'TOURS_COMPLETED', requirementValue: 10, rarity: 'EPIC' },
+    
+    // Legendary Achievements
+    { code: 'FRANCE_EXPLORER', name: 'France Explorer', description: 'Visit cheese places in all 13 regions of France', iconUrl: '/achievements/france-explorer.svg', requirementType: 'REGIONS_VISITED', requirementValue: 13, rarity: 'LEGENDARY' },
+    { code: 'CHEESE_MASTER', name: 'Maître Fromager', description: 'Visit 50 different cheese places', iconUrl: '/achievements/cheese-master.svg', requirementType: 'STAMPS_COUNT', requirementValue: 50, rarity: 'LEGENDARY' },
+  ];
 
-  const farmBusiness = await prisma.business.create({
-    data: {
-      userId: farmUser.id,
-      name: 'Ferme du Mont d\'Or',
-      slug: 'ferme-du-mont-dor',
-      businessType: BusinessType.FARM,
-      description: 'Traditional mountain farm producing authentic Comté',
-      story: 'Our family has been making cheese in the Jura mountains for five generations, respecting ancestral methods.',
-      address: 'Route de la Montagne',
-      city: 'Métabief',
-      postalCode: '25370',
-      regionId: regions[2].id,
-      latitude: 46.7733,
-      longitude: 6.3522,
-      phone: '+33 3 81 49 13 81',
-      toursEnabled: true,
-      deliveryEnabled: true,
-      verified: true,
-      plan: SubscriptionPlan.STARTER,
-    },
-  });
+  for (const achievement of achievements) {
+    await prisma.achievement.upsert({
+      where: { code: achievement.code },
+      update: {},
+      create: achievement as any,
+    });
+  }
+  console.log(`✅ ${achievements.length} achievements created\n`);
 
-  // Create Inventory for Shop
-  await prisma.inventoryItem.create({
-    data: {
-      businessId: shopBusiness.id,
-      cheeseId: cheeses[0].id,
-      sku: 'CAM-001',
-      name: 'Camembert de Normandie AOP',
-      description: 'Authentic Normandy Camembert, 250g',
-      quantity: 45,
-      unit: 'piece',
-      price: 850, // €8.50
-      available: true,
-    },
-  });
-
-  await prisma.inventoryItem.create({
-    data: {
-      businessId: shopBusiness.id,
-      cheeseId: cheeses[1].id,
-      sku: 'COM-001',
-      name: 'Comté 12 months',
-      description: 'Aged Comté, 500g portion',
-      quantity: 30,
-      unit: 'piece',
-      price: 1450, // €14.50
-      available: true,
-    },
-  });
-
-  // Create Batch for Farm
-  const batch = await prisma.batch.create({
-    data: {
-      businessId: farmBusiness.id,
-      batchNumber: 'BATCH-2024-001',
-      milkSource: 'Montbéliarde cows, alpine pastures',
-      productionDate: new Date('2024-01-15'),
-      agingStartDate: new Date('2024-01-16'),
-      targetAgingDays: 120,
-      initialQuantity: 40,
-      currentQuantity: 38.5,
-      unit: 'kg',
-      qualityNotes: 'Excellent milk quality, perfect aging conditions',
-    },
-  });
-
-  // Create Tour
-  await prisma.tour.create({
-    data: {
-      businessId: farmBusiness.id,
-      title: 'Comté Cheese Making Experience',
-      slug: 'comte-cheese-making-experience',
-      description: 'Discover the art of Comté making with a guided tour of our facilities, tasting session, and workshop.',
-      type: 'farm visit',
-      duration: 120,
-      capacity: 12,
-      price: 2500, // €25
-      availableDays: [1, 2, 3, 4, 5], // Monday to Friday
-      startTimes: ['10:00', '14:00'],
-      safetyInfo: 'Closed-toe shoes required. Not recommended for children under 6.',
-      includedItems: ['Guided tour', 'Tasting of 5 cheeses', 'Workshop participation', 'Take-home sample'],
-      status: 'APPROVED',
-      active: true,
-    },
-  });
-
-  // Create Delivery Countries
-  await Promise.all([
-    prisma.deliveryCountry.create({
-      data: {
-        countryCode: 'FR',
-        countryName: 'France',
-        enabled: true,
-        baseShippingCost: 750, // €7.50
-        estimatedDays: 2,
-      },
-    }),
-    prisma.deliveryCountry.create({
-      data: {
-        countryCode: 'BE',
-        countryName: 'Belgium',
-        enabled: true,
-        baseShippingCost: 1250, // €12.50
-        estimatedDays: 3,
-        customsInfo: 'EU member - no customs',
-      },
-    }),
-    prisma.deliveryCountry.create({
-      data: {
-        countryCode: 'DE',
-        countryName: 'Germany',
-        enabled: true,
-        baseShippingCost: 1450, // €14.50
-        estimatedDays: 4,
-        customsInfo: 'EU member - no customs',
-      },
-    }),
-  ]);
-
-  console.log('✅ Database seeded successfully!');
+  console.log('✅ Database seeding completed!\n');
+  console.log('📊 Summary:');
+  console.log(`   - Admin user: admin@cheesemap.fr (password: Admin123!@#)`);
+  console.log(`   - Delivery zones: ${deliveryZones.length} countries`);
+  console.log(`   - Achievements: ${achievements.length} unlockables`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error seeding database:', e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

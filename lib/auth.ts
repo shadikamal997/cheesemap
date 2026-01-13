@@ -27,18 +27,15 @@ export const authOptions: NextAuthOptions = {
           where: {
             email: credentials.email,
           },
-          include: {
-            business: true,
-          },
         });
 
-        if (!user || !user.password) {
+        if (!user || !user.passwordHash) {
           throw new Error("Invalid credentials");
         }
 
         const isCorrectPassword = await bcrypt.compare(
           credentials.password,
-          user.password
+          user.passwordHash
         );
 
         if (!isCorrectPassword) {
@@ -48,7 +45,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
           role: user.role,
         };
       },
