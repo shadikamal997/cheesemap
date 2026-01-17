@@ -28,10 +28,11 @@ function SignupBusinessForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if previous step was completed
-    const signupData = sessionStorage.getItem("signupData");
-    if (!signupData) {
-      router.push("/signup/role");
+    // Check if user is logged in
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      // Not logged in, redirect to login
+      router.push("/login");
     }
   }, [router]);
 
@@ -94,14 +95,13 @@ function SignupBusinessForm() {
         return;
       }
 
-      // Get auth token from sessionStorage
-      const authData = sessionStorage.getItem("signupData");
-      if (!authData) {
-        router.push("/signup/role");
+      // Get auth token from localStorage (user should be logged in)
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        // Not logged in, redirect to login
+        router.push("/login");
         return;
       }
-
-      const { token } = JSON.parse(authData);
       
       // Prepare business creation payload
       const payload = {
@@ -137,12 +137,10 @@ function SignupBusinessForm() {
       }
 
       // Store business ID for next step
-      const updatedAuthData = JSON.parse(authData);
-      updatedAuthData.businessId = data.business.id;
-      sessionStorage.setItem("signupData", JSON.stringify(updatedAuthData));
+      sessionStorage.setItem("businessId", data.business.id);
 
-      // Navigate to modules selection
-      router.push(`/signup/modules?role=${role}`);
+      // Navigate to modules selection (or dashboard for now since modules page isn't complete)
+      router.push(`/dashboard/${role}`);
     } catch (error) {
       console.error('Business creation error:', error);
       setErrors({ 
