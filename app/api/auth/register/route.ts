@@ -10,6 +10,7 @@ const registerSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional(),
+  role: z.enum(['VISITOR', 'SHOP', 'FARM']).optional().default('VISITOR'),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, firstName, lastName, phone } = validation.data;
+    const { email, password, firstName, lastName, phone, role } = validation.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         phone,
-        role: 'VISITOR',
+        role: role as any, // VISITOR, SHOP, or FARM
         emailVerificationToken: verificationData.token,
         emailVerificationExpiry: verificationData.expiresAt,
         emailVerified: false,

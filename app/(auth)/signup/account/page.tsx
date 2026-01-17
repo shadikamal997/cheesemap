@@ -71,6 +71,7 @@ function SignupAccountForm() {
         firstName: firstName || formData.name,
         lastName: lastNameParts.join(' ') || '',
         preferredLanguage: formData.language,
+        role: role.toUpperCase(), // SHOP, FARM, or VISITOR
       };
 
       // Call registration API
