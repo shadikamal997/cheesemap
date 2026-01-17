@@ -91,10 +91,10 @@ function SignupAccountForm() {
 
       // Store role for after login
       sessionStorage.setItem("pendingRole", role);
-      sessionStorage.setItem("registeredEmail", formData.email);
 
-      // Registration successful - redirect to email verification page
-      router.push("/verify-email-pending");
+      // Registration successful - redirect to login page
+      // Email verification can be enabled later
+      router.push("/login");
     } catch (error) {
       console.error('Registration error:', error);
       setErrors({ 
