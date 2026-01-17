@@ -18,11 +18,13 @@ const updateBusinessSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         owner: {
           select: {
@@ -62,7 +64,6 @@ export async function GET(
     return NextResponse.json({ business });
 
   } catch (error) {
-    console.error('Get business error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching business' },
       { status: 500 }
@@ -72,15 +73,17 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     // Verify ownership
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true, verificationStatus: true },
     });
 
@@ -109,7 +112,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.business.update({
-      where: { id: params.id },
+      where: { id },
       data: validation.data,
       include: {
         owner: {
@@ -129,7 +132,6 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error('Update business error:', error);
     return NextResponse.json(
       { error: 'An error occurred while updating business' },
       { status: 500 }

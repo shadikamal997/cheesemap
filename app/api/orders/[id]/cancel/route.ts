@@ -10,14 +10,16 @@ const cancelSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const order = await prisma.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         business: { select: { ownerId: true } },
         items: true,
@@ -77,7 +79,7 @@ export async function POST(
 
       // Update order
       return await tx.order.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           status: 'CANCELLED',
           cancelledAt: new Date(),
@@ -101,7 +103,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Cancel order error:', error);
     return NextResponse.json(
       { error: 'An error occurred while cancelling order' },
       { status: 500 }

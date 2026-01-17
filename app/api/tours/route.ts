@@ -67,7 +67,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ tours });
 
   } catch (error) {
-    console.error('Get tours error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching tours' },
       { status: 500 }
@@ -140,7 +139,6 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Create tour error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating tour' },
       { status: 500 }

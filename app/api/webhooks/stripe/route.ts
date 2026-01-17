@@ -12,7 +12,8 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = headers().get('stripe-signature');
+    const headersList = await headers();
+    const signature = headersList.get('stripe-signature');
 
     if (!signature) {
       return NextResponse.json(
@@ -26,7 +27,6 @@ export async function POST(request: NextRequest) {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
@@ -48,13 +48,12 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        // Unhandled event type - acknowledge and continue
     }
 
     return NextResponse.json({ received: true });
 
   } catch (error) {
-    console.error('Webhook error:', error);
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }
@@ -85,8 +84,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     });
 
     // TODO: Send order confirmation email
-  }
-
+  
   if (bookingId) {
     // Update booking
     await prisma.tourBooking.update({
@@ -97,8 +95,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     });
 
     // TODO: Send booking confirmation email
-  }
-}
+  
 
 async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
   await prisma.payment.updateMany({
@@ -113,7 +110,6 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
 
   // TODO: Send payment failed email
 }
-
 async function handleRefund(charge: Stripe.Charge) {
   const payment = await prisma.payment.findFirst({
     where: { providerPaymentId: charge.payment_intent as string },

@@ -132,7 +132,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Create booking payment intent error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating payment intent' },
       { status: 500 }

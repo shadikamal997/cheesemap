@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Store, Tractor, User } from "lucide-react";
 
-export default function SignupAccountPage() {
+function SignupAccountForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get("role") || "visitor";
@@ -19,6 +19,7 @@ export default function SignupAccountPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   const roleInfo = {
     shop: {
@@ -43,6 +44,7 @@ export default function SignupAccountPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     const newErrors: Record<string, string> = {};
 
     // Validation
@@ -56,18 +58,60 @@ export default function SignupAccountPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setLoading(false);
       return;
     }
 
-    // TODO: Create user account
-    // Store data in sessionStorage for next step
-    sessionStorage.setItem("signupData", JSON.stringify({ ...formData, role }));
+    try {
+      // Prepare registration payload
+      const [firstName, ...lastNameParts] = formData.name.split(' ');
+      const payload = {
+        email: formData.email,
+        password: formData.password,
+        firstName: firstName || formData.name,
+        lastName: lastNameParts.join(' ') || '',
+        preferredLanguage: formData.language,
+      };
 
-    // Navigate to next step
-    if (role === "shop" || role === "farm") {
-      router.push(`/signup/business?role=${role}`);
-    } else {
-      router.push("/signup/success");
+      // Call registration API
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Registration failed');
+      }
+
+      const data = await response.json();
+
+      // Store token and data for next step
+      sessionStorage.setItem("signupData", JSON.stringify({ 
+        ...formData, 
+        role,
+        token: data.token,
+        userId: data.user.id 
+      }));
+
+      // Navigate to next step
+      if (role === "shop" || role === "farm") {
+        router.push(`/signup/business?role=${role}`);
+      } else {
+        // For visitors, we're done - redirect to success
+        sessionStorage.removeItem('signupData');
+        router.push("/signup/success");
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrors({ 
+        general: error instanceof Error ? error.message : 'Registration failed. Please try again.' 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,6 +176,13 @@ export default function SignupAccountPage() {
           <h3 className="text-xl font-semibold mb-6">Create Your Account</h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* General Error */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-600 text-sm">{errors.general}</p>
+              </div>
+            )}
+            
             {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,9 +327,13 @@ export default function SignupAccountPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full mt-6 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
+              disabled={loading}
+              className="w-full mt-6 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {role === "shop" || role === "farm" ? "Continue to Business Info" : "Create Account"}
+              {loading 
+                ? 'Creating Account...' 
+                : (role === "shop" || role === "farm" ? "Continue to Business Info" : "Create Account")
+              }
             </button>
           </form>
 
@@ -291,5 +346,20 @@ export default function SignupAccountPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupAccountPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignupAccountForm />
+    </Suspense>
   );
 }

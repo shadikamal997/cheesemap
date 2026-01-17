@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ tours });
 
   } catch (error) {
-    console.error('Get pending tours error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching tours' },
       { status: 500 }

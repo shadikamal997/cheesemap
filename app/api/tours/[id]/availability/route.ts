@@ -3,15 +3,17 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from') || new Date().toISOString();
     const to = searchParams.get('to');
 
     const where: any = {
-      tourId: params.id,
+      tourId: id,
       date: { gte: new Date(from) },
     };
 
@@ -56,7 +58,6 @@ export async function GET(
     return NextResponse.json({ availability });
 
   } catch (error) {
-    console.error('Get availability error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching availability' },
       { status: 500 }

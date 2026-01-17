@@ -13,14 +13,16 @@ const agingLogSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const batch = await prisma.farmBatch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         business: { select: { ownerId: true } },
         agingLogs: {
@@ -46,7 +48,6 @@ export async function GET(
     return NextResponse.json({ logs: batch.agingLogs });
 
   } catch (error) {
-    console.error('Get aging logs error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching aging logs' },
       { status: 500 }
@@ -56,14 +57,16 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const batch = await prisma.farmBatch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { business: { select: { ownerId: true } } },
     });
 
@@ -94,7 +97,7 @@ export async function POST(
     const log = await prisma.agingLog.create({
       data: {
         ...validation.data,
-        batchId: params.id,
+        batchId: id,
         loggedBy: user.userId,
       },
     });
@@ -102,7 +105,7 @@ export async function POST(
     // Update batch with latest data
     if (validation.data.weightKg) {
       await prisma.farmBatch.update({
-        where: { id: params.id },
+        where: { id },
         data: { currentQuantityKg: validation.data.weightKg },
       });
     }
@@ -113,7 +116,6 @@ export async function POST(
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Create aging log error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating aging log' },
       { status: 500 }

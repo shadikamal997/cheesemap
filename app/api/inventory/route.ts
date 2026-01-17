@@ -63,7 +63,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ inventory });
 
   } catch (error) {
-    console.error('Get inventory error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching inventory' },
       { status: 500 }
@@ -130,7 +129,6 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Create inventory error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating inventory item' },
       { status: 500 }

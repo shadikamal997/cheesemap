@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
   extensions = [postgis]
 }
 
@@ -212,6 +211,7 @@ model User {
   auditLogs               AuditLog[]
   verifiedBy              VerificationRequest[] @relation("VerifiedBy")
   approvedTours           Tour[] @relation("TourApprover")
+  fileUploads             FileUpload[]
   
   @@index([email])
   @@index([role])
@@ -893,8 +893,29 @@ model DeliverySettings {
 }
 
 // ============================================================================
-// ADMIN & VERIFICATION
+// FILE UPLOADS
 // ============================================================================
+
+model FileUpload {
+  id            String   @id @default(cuid())
+  fileKey       String   @unique
+  originalName  String
+  contentType   String
+  fileSize      Int
+  folder        String
+  entityId      String?
+  uploadedById  String
+  uploadedBy    User     @relation(fields: [uploadedById], references: [id])
+  uploadedAt    DateTime?
+  expiresAt     DateTime
+  isCompleted   Boolean  @default(false)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([uploadedById])
+  @@index([expiresAt])
+  @@map("file_uploads")
+}
 
 model VerificationRequest {
   id            String   @id @default(cuid())

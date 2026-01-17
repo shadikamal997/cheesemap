@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Email verification error:', error);
     return NextResponse.json(
       { error: 'An error occurred during email verification' },
       { status: 500 }

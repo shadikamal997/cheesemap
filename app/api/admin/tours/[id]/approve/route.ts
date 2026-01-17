@@ -11,14 +11,16 @@ const approveTourSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireRole(request, 'ADMIN');
     if (admin instanceof NextResponse) return admin;
 
+    const { id } = await params;
+
     const tour = await prisma.tour.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!tour) {
@@ -41,14 +43,12 @@ export async function POST(
     const { approve, notes } = validation.data;
 
     const updated = await prisma.tour.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         approvalStatus: approve ? 'APPROVED' : 'REJECTED',
         isActive: approve,
       },
     });
-
-    // TODO: Send notification email to business
 
     return NextResponse.json({
       message: approve ? 'Tour approved successfully' : 'Tour rejected',
@@ -56,7 +56,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Approve tour error:', error);
     return NextResponse.json(
       { error: 'An error occurred while approving tour' },
       { status: 500 }

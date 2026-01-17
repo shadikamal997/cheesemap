@@ -1,3 +1,4 @@
+````markdown
 # CheeseMap API Testing Guide
 
 ## Quick Start
@@ -436,3 +437,5 @@ curl http://localhost:3000/api/health
 ---
 
 **Full API Documentation:** See `/IMPLEMENTATION_SUMMARY.md` for detailed endpoint specifications
+
+````

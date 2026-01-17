@@ -1,81 +1,88 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Calendar, MapPin, Users, Clock, ChevronRight, Star, MessageSquare } from "lucide-react";
+import { api } from "@/lib/auth/apiClient";
 
 export default function BookingsPage() {
-  const upcomingBookings = [
-    {
-      id: 1,
-      tour: "Comté Aging Cave Tour",
-      place: "Maison du Comté",
-      location: "Poligny, Bourgogne-Franche-Comté",
-      date: "January 20, 2024",
-      time: "2:00 PM",
-      duration: "2 hours",
-      guests: 2,
-      price: "€45.00",
-      image: "🧀",
-      host: "Jean-Pierre Dubois",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      tour: "Farm Visit & Tasting",
-      place: "Ferme Alpine des Aravis",
-      location: "La Clusaz, Auvergne-Rhône-Alpes",
-      date: "January 25, 2024",
-      time: "10:00 AM",
-      duration: "3 hours",
-      guests: 4,
-      price: "€120.00",
-      image: "🚜",
-      host: "Marie Laurent",
-      status: "confirmed",
-    },
-  ];
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const pastBookings = [
-    {
-      id: 3,
-      tour: "Cheese Making Workshop",
-      place: "Fromagerie Tradition",
-      location: "Lyon, Auvergne-Rhône-Alpes",
-      date: "January 5, 2024",
-      time: "3:00 PM",
-      guests: 2,
-      price: "€60.00",
-      image: "👨‍🍳",
-      rating: 5,
-      reviewed: true,
-    },
-    {
-      id: 4,
-      tour: "Roquefort Cave Discovery",
-      place: "Caves de Roquefort",
-      location: "Roquefort-sur-Soulzon, Occitanie",
-      date: "December 28, 2023",
-      time: "11:00 AM",
-      guests: 2,
-      price: "€38.00",
-      image: "🏔️",
-      rating: 5,
-      reviewed: true,
-    },
-    {
-      id: 5,
-      tour: "Brie de Meaux Experience",
-      place: "Ferme de la Brie",
-      location: "Meaux, Île-de-France",
-      date: "December 15, 2023",
-      time: "2:30 PM",
-      guests: 3,
-      price: "€75.00",
-      image: "🥖",
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/bookings');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data.bookings || []);
+      }
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError('Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const upcomingBookings = bookings
+    .filter(b => ['PENDING', 'PAID', 'CONFIRMED'].includes(b.status))
+    .filter(b => new Date(b.schedule.date) >= new Date())
+    .map(b => ({
+      id: b.id,
+      tour: b.schedule.tour.title,
+      place: b.schedule.tour.business.displayName,
+      location: `${b.schedule.tour.business.city}`,
+      date: new Date(b.schedule.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      time: b.schedule.startTime,
+      duration: `${Math.floor(b.schedule.tour.durationMinutes / 60)} hours`,
+      guests: b.participants,
+      price: `€${b.totalPrice.toFixed(2)}`,
+      image: "🧀",
+      status: b.status.toLowerCase(),
+    }));
+
+  const pastBookings = bookings
+    .filter(b => ['COMPLETED', 'CANCELLED'].includes(b.status) || new Date(b.schedule.date) < new Date())
+    .map(b => ({
+      id: b.id,
+      tour: b.schedule.tour.title,
+      place: b.schedule.tour.business.displayName,
+      location: `${b.schedule.tour.business.city}`,
+      date: new Date(b.schedule.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      time: b.schedule.startTime,
+      guests: b.participants,
+      price: `€${b.totalPrice.toFixed(2)}`,
+      image: "🧀",
       rating: 0,
-      reviewed: false,
-    },
-  ];
+      reviewed: !!b.review,
+    }));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading bookings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800">{error}</p>
+        <button onClick={fetchBookings} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -157,7 +164,7 @@ export default function BookingsPage() {
                 </div>
 
                 <div className="border-t border-orange-200 pt-4 mt-4">
-                  <p className="text-sm text-gray-600 mb-2">Hosted by <span className="font-semibold text-gray-900">{booking.host}</span></p>
+                  <p className="text-sm text-gray-600 mb-2">Hosted by <span className="font-semibold text-gray-900">{booking.place}</span></p>
                   <div className="flex items-center gap-3">
                     <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold transition-colors">
                       Get Directions

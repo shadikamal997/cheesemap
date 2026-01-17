@@ -68,7 +68,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ batches });
 
   } catch (error) {
-    console.error('Get batches error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching batches' },
       { status: 500 }
@@ -123,7 +122,6 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Create batch error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating batch' },
       { status: 500 }

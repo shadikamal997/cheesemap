@@ -36,7 +36,6 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
     
     return JSON.parse(cached) as T;
   } catch (error) {
-    console.error('Cache get error:', error);
     return null;
   }
 }
@@ -50,7 +49,7 @@ export async function cacheSet(
     const client = getRedisClient();
     await client.setex(key, ttlSeconds, JSON.stringify(value));
   } catch (error) {
-    console.error('Cache set error:', error);
+    // Cache set failed - continue without caching
   }
 }
 
@@ -59,7 +58,7 @@ export async function cacheDel(key: string): Promise<void> {
     const client = getRedisClient();
     await client.del(key);
   } catch (error) {
-    console.error('Cache del error:', error);
+    // Cache del failed - continue silently
   }
 }
 
@@ -72,6 +71,6 @@ export async function cacheDelPattern(pattern: string): Promise<void> {
       await client.del(...keys);
     }
   } catch (error) {
-    console.error('Cache del pattern error:', error);
+    // Cache pattern cleanup failed - continue silently
   }
 }

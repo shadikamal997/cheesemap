@@ -18,6 +18,8 @@ import {
   Award,
   Heart,
   Milk,
+  Shield,
+  Building2,
 } from "lucide-react";
 
 interface DashboardSidebarProps {
@@ -58,6 +60,11 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
       { name: "Reviews", href: "/dashboard/visitor/reviews", icon: Star },
       { name: "Settings", href: "/dashboard/visitor/settings", icon: Settings },
     ],
+    admin: [
+      { name: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
+      { name: "Businesses", href: "/dashboard/admin/businesses", icon: Building2 },
+      { name: "Tours", href: "/dashboard/admin/tours", icon: MapPin },
+    ],
   };
 
   const navigation = navigationByRole[userRole as keyof typeof navigationByRole] || navigationByRole.visitor;
@@ -66,6 +73,7 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
     shop: "Cheese Shop",
     farm: "Farm & Producer",
     visitor: "Cheese Explorer",
+    admin: "Admin Dashboard",
   };
 
   return (
@@ -113,6 +121,21 @@ export default function DashboardSidebar({ userRole }: DashboardSidebarProps) {
               <button className="w-full bg-white text-orange-600 text-sm font-semibold py-2 px-4 rounded-lg hover:bg-gray-50 transition">
                 Upgrade Now
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Badge */}
+        {userRole === 'admin' && (
+          <div className="p-4 border-t">
+            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-3 text-white">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                <div>
+                  <p className="text-xs font-semibold">Administrator</p>
+                  <p className="text-xs opacity-90">Full platform access</p>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -10,14 +10,16 @@ const updateStatusSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const order = await prisma.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         business: {
           select: {
@@ -81,7 +83,6 @@ export async function GET(
     return NextResponse.json({ order });
 
   } catch (error) {
-    console.error('Get order error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching order' },
       { status: 500 }
@@ -91,14 +92,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const order = await prisma.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { businessId: true, status: true },
     });
 
@@ -153,7 +156,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.order.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: validation.data.status,
         ...(validation.data.status === 'COMPLETED' && {
@@ -178,7 +181,6 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error('Update order error:', error);
     return NextResponse.json(
       { error: 'An error occurred while updating order' },
       { status: 500 }

@@ -215,7 +215,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Businesses API error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching businesses' },
       { status: 500 }

@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,20 +21,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // TODO: Implement NextAuth signIn
-      // const result = await signIn("credentials", {
-      //   redirect: false,
-      //   email,
-      //   password,
-      // });
-
-      // Temporary: Set demo role in sessionStorage for testing
-      sessionStorage.setItem("signupData", JSON.stringify({ role: "visitor" }));
-
-      // Temporary redirect for demo
-      router.push("/dashboard/visitor");
-    } catch (err) {
-      setError("Invalid credentials");
+      await login(email, password);
+      // Redirect is handled by the login function
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);
     }

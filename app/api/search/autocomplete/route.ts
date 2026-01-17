@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions });
 
   } catch (error) {
-    console.error('Autocomplete error:', error);
     return NextResponse.json({ suggestions: [] });
   }
 }

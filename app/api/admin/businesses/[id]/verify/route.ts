@@ -11,14 +11,16 @@ const verifySchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireRole(request, 'ADMIN');
     if (admin instanceof NextResponse) return admin;
 
+    const { id } = await params;
+
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         verificationRequests: {
           where: { status: 'pending' },
@@ -63,7 +65,7 @@ export async function POST(
 
     // Update business status
     const updated = await prisma.business.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         verificationStatus: approve ? 'VERIFIED' : 'REJECTED',
         isVisible: approve,
@@ -71,15 +73,12 @@ export async function POST(
       },
     });
 
-    // TODO: Send notification email to business owner
-
     return NextResponse.json({
       message: approve ? 'Business verified successfully' : 'Business rejected',
       business: updated,
     });
 
   } catch (error) {
-    console.error('Verify business error:', error);
     return NextResponse.json(
       { error: 'An error occurred while verifying business' },
       { status: 500 }

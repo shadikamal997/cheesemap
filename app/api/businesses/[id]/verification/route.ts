@@ -13,15 +13,17 @@ const verificationSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     // Verify ownership
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true, verificationStatus: true },
     });
 
@@ -59,7 +61,7 @@ export async function POST(
     // Create verification request
     const verificationRequest = await prisma.verificationRequest.create({
       data: {
-        businessId: params.id,
+        businessId: id,
         requestedBy: user.userId,
         status: 'pending',
         documents: validation.data.documents || [],
@@ -69,7 +71,7 @@ export async function POST(
 
     // Update business status
     await prisma.business.update({
-      where: { id: params.id },
+      where: { id },
       data: { verificationStatus: 'PENDING' },
     });
 
@@ -79,7 +81,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Submit verification error:', error);
     return NextResponse.json(
       { error: 'An error occurred while submitting verification' },
       { status: 500 }

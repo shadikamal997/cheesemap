@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ businesses });
 
   } catch (error) {
-    console.error('Get pending businesses error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching businesses' },
       { status: 500 }

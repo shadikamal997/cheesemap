@@ -10,14 +10,16 @@ const updateBookingSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const booking = await prisma.tourBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         schedule: {
           include: {
@@ -71,7 +73,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.tourBooking.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: validation.data.status,
         ...(validation.data.status === 'CANCELLED' && {
@@ -97,7 +99,6 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error('Update booking error:', error);
     return NextResponse.json(
       { error: 'An error occurred while updating booking' },
       { status: 500 }

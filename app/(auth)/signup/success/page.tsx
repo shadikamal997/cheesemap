@@ -1,51 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, Store, Tractor, User } from "lucide-react";
 import Link from "next/link";
 
-export default function SignupSuccessPage() {
+function SignupSuccessForm() {
   const router = useRouter();
-  const [userData, setUserData] = useState<any>(null);
+  const searchParams = useSearchParams();
+  const role = searchParams.get("role") || "visitor";
 
   useEffect(() => {
-    const signupData = sessionStorage.getItem("signupData");
-    if (signupData) {
-      const data = JSON.parse(signupData);
-      setUserData(data);
-      // Don't clear signup data yet - dashboard needs it for routing
-    } else {
-      // If no signup data, redirect to start
-      router.push("/signup/role");
-    }
-  }, [router]);
-
-  if (!userData) {
-    return null;
-  }
+    // Clean up any remaining signup data
+    sessionStorage.removeItem("signupData");
+  }, []);
 
   const roleInfo = {
     shop: {
       icon: Store,
       title: "Cheese Shop / Fromagerie",
       features: ["Inventory Management", "Order Processing", "Customer Reviews"],
+      nextSteps: ["Log in to your account", "Complete your business profile", "Add business hours and images", "Submit for admin verification"]
     },
     farm: {
       icon: Tractor,
       title: "Farm / Producer",
       features: ["Production Tracking", "Batch Management", "Direct Sales"],
+      nextSteps: ["Log in to your account", "Complete your farm profile", "Add production details", "Submit for admin verification"]
     },
     visitor: {
       icon: User,
       title: "Visitor / Tourist",
       features: ["Cheese Discovery", "Tour Bookings", "Cheese Passport"],
+      nextSteps: ["Log in to your account", "Start exploring cheese shops", "Book your first tour", "Build your cheese passport"]
     },
   };
 
-  const currentRole = roleInfo[userData.role as keyof typeof roleInfo] || roleInfo.visitor;
+  const currentRole = roleInfo[role as keyof typeof roleInfo] || roleInfo.visitor;
   const Icon = currentRole.icon;
-  const isBusiness = userData.role === "shop" || userData.role === "farm";
+  const isBusiness = role === "shop" || role === "farm";
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -67,81 +60,55 @@ export default function SignupSuccessPage() {
             </div>
             <div>
               <h2 className="text-xl font-semibold mb-1">{currentRole.title}</h2>
-              <p className="text-gray-600">{userData.email}</p>
+              <p className="text-gray-600">Account created successfully</p>
             </div>
           </div>
 
-          {isBusiness && userData.business && (
-            <div className="border-t pt-4 mb-4">
-              <h3 className="font-semibold mb-2">Business Details</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-600">Business:</span>
-                  <span className="ml-2 font-medium">{userData.business.businessName}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Location:</span>
-                  <span className="ml-2 font-medium">{userData.business.city}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Region:</span>
-                  <span className="ml-2 font-medium">{userData.business.region}</span>
-                </div>
-              </div>
+          {isBusiness && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <h3 className="font-semibold text-amber-900 mb-2">⏳ Pending Verification</h3>
+              <p className="text-sm text-amber-800">
+                Your business has been created in draft status. An admin will review your information before your business becomes visible on the platform.
+              </p>
             </div>
           )}
 
           <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3">What You Can Do Now:</h3>
-            <div className="space-y-2">
+            <h3 className="font-semibold mb-3">What You Can Do:</h3>
+            <div className="space-y-2 mb-4">
               {currentRole.features.map((feature, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-orange-600"></div>
                   <span className="text-gray-700">{feature}</span>
                 </div>
               ))}
-              {userData.modules?.tours && (
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-600"></div>
-                  <span className="text-gray-700">Tour Management (Pending Approval)</span>
-                </div>
-              )}
-              {userData.modules?.delivery && (
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-600"></div>
-                  <span className="text-gray-700">Delivery Management</span>
-                </div>
-              )}
             </div>
+
+            <h3 className="font-semibold mb-3 mt-6">Next Steps:</h3>
+            <ol className="space-y-2">
+              {currentRole.nextSteps.map((step, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="font-semibold text-orange-600 min-w-[20px]">{index + 1}.</span>
+                  <span className="text-gray-700">{step}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
-
-        {/* Next Steps */}
-        {isBusiness && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-blue-900 mb-2">📋 Next Steps</h3>
-            <ul className="space-y-2 text-sm text-blue-900">
-              <li>1. Our team will verify your business information (usually within 24 hours)</li>
-              <li>2. You'll receive an email confirmation when your account is verified</li>
-              <li>3. Complete your profile and add your first products</li>
-              {userData.modules?.tours && <li>4. Create your first tour (requires admin approval)</li>}
-            </ul>
-          </div>
-        )}
 
         {/* CTA Buttons */}
         <div className="space-y-3">
           <Link
-            href={`/dashboard/${userData.role}`}
+            href="/login"
             className="block w-full px-6 py-3 bg-orange-600 text-white text-center rounded-lg font-semibold hover:bg-orange-700 transition"
           >
-            Go to Dashboard
+            Log In to Your Account
           </Link>
           <Link
-            href="/map"
+            href="/"
             className="block w-full px-6 py-3 border-2 border-gray-300 text-gray-700 text-center rounded-lg font-semibold hover:bg-gray-50 transition"
           >
-            Explore the Cheese Map
+            Back to Home
           </Link>
         </div>
 
@@ -154,5 +121,20 @@ export default function SignupSuccessPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignupSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignupSuccessForm />
+    </Suspense>
   );
 }

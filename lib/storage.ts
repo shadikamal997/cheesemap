@@ -1,5 +1,5 @@
 // lib/storage.ts - S3/R2-compatible storage utilities
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 
@@ -73,6 +73,18 @@ export async function deleteFromS3(key: string): Promise<void> {
   await s3Client.send(command);
 }
 
+export async function getSignedReadUrl(
+  key: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  });
+
+  return await getSignedUrl(s3Client, command, { expiresIn });
+}
+
 export async function getSignedUploadUrl(
   key: string,
   contentType: string,
@@ -82,7 +94,6 @@ export async function getSignedUploadUrl(
     Bucket: BUCKET_NAME,
     Key: key,
     ContentType: contentType,
-    ACL: 'public-read',
   });
 
   return await getSignedUrl(s3Client, command, { expiresIn });

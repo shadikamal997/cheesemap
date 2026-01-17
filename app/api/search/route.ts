@@ -96,7 +96,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results, cached: false });
 
   } catch (error) {
-    console.error('Search error:', error);
     return NextResponse.json(
       { error: 'An error occurred while searching' },
       { status: 500 }

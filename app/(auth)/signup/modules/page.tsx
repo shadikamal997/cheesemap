@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Store, Tractor, Calendar, Truck } from "lucide-react";
 
-export default function SignupModulesPage() {
+function SignupModulesForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get("role") || "shop";
@@ -27,19 +27,35 @@ export default function SignupModulesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    // Store module preferences
-    const signupData = sessionStorage.getItem("signupData");
-    if (signupData) {
+    try {
+      // Get signup data from sessionStorage
+      const signupData = sessionStorage.getItem("signupData");
+      if (!signupData) {
+        router.push("/signup/role");
+        return;
+      }
+
       const userData = JSON.parse(signupData);
-      sessionStorage.setItem("signupData", JSON.stringify({ ...userData, modules }));
+      const role = userData.role || searchParams.get("role") || "shop";
+      
+      // Note: At this point, the business has already been created in step 3
+      // and the user's role has been updated to SHOP or FARM by the backend.
+      // Module preferences (tours/delivery) can be configured later in the dashboard
+      // as they require additional setup (Stripe Connect for payments, etc.)
+
+      // Navigate to success page (sessionStorage will be cleared there)
+      router.push(`/signup/success?role=${role}`);
+    } catch (error) {
+      console.error('Signup completion error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to complete signup. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // TODO: Create account in database
-
-    // Navigate to success
-    router.push("/signup/success");
   };
+
+  const [loading, setLoading] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -178,20 +194,37 @@ export default function SignupModulesPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                disabled={loading}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Back
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Complete Signup
+                {loading ? 'Completing...' : 'Complete Signup'}
               </button>
             </div>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupModulesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignupModulesForm />
+    </Suspense>
   );
 }

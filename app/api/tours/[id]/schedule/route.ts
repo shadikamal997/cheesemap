@@ -13,14 +13,16 @@ const scheduleSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    const where: any = { tourId: params.id };
+    const where: any = { tourId: id };
     if (from) {
       where.date = { gte: new Date(from) };
     }
@@ -45,7 +47,6 @@ export async function GET(
     return NextResponse.json({ schedules });
 
   } catch (error) {
-    console.error('Get schedules error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching schedules' },
       { status: 500 }
@@ -55,14 +56,16 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const tour = await prisma.tour.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { business: { select: { ownerId: true } } },
     });
 
@@ -93,7 +96,7 @@ export async function POST(
     // Check if schedule already exists for this date/time
     const existing = await prisma.tourSchedule.findFirst({
       where: {
-        tourId: params.id,
+        tourId: id,
         date: validation.data.date,
         startTime: validation.data.startTime,
       },
@@ -108,7 +111,7 @@ export async function POST(
 
     const schedule = await prisma.tourSchedule.create({
       data: {
-        tourId: params.id,
+        tourId: id,
         date: validation.data.date,
         startTime: validation.data.startTime,
         maxCapacity: validation.data.maxParticipants || tour.maxCapacity,
@@ -124,7 +127,6 @@ export async function POST(
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Create schedule error:', error);
     return NextResponse.json(
       { error: 'An error occurred while creating schedule' },
       { status: 500 }

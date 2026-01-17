@@ -1,39 +1,95 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar, Award, Heart, Star, ChevronRight } from "lucide-react";
+import { api } from "@/lib/auth/apiClient";
 
 export default function VisitorDashboard() {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [passport, setPassport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [bookingsRes, passportRes] = await Promise.all([
+        api.get('/api/bookings'),
+        api.get('/api/passport')
+      ]);
+
+      if (bookingsRes.ok) {
+        const data = await bookingsRes.json();
+        setBookings(data.bookings || []);
+      }
+
+      if (passportRes.ok) {
+        const data = await passportRes.json();
+        setPassport(data.passport || {});
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard:', err);
+      setError('Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const upcomingBookings = bookings
+    .filter(b => ['PENDING', 'PAID', 'CONFIRMED'].includes(b.status))
+    .filter(b => new Date(b.schedule.date) >= new Date())
+    .slice(0, 2)
+    .map(b => ({
+      id: b.id,
+      tour: b.schedule.tour.title,
+      place: b.schedule.tour.business.displayName,
+      date: new Date(b.schedule.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      time: b.schedule.startTime,
+      guests: b.participants
+    }));
+
+  const recentStamps = (passport?.stamps || []).slice(0, 3).map((s: any) => ({
+    region: s.region,
+    place: s.business.displayName,
+    date: new Date(s.acquiredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    icon: '🧀'
+  }));
+
   const stats = [
-    { label: "Places Saved", value: "18", icon: Heart, color: "bg-red-100 text-red-600" },
-    { label: "Regions Visited", value: "5", icon: MapPin, color: "bg-blue-100 text-blue-600" },
-    { label: "Tours Booked", value: "3", icon: Calendar, color: "bg-green-100 text-green-600" },
-    { label: "Passport Stamps", value: "12", icon: Award, color: "bg-orange-100 text-orange-600" },
+    { label: "Places Saved", value: "N/A", icon: Heart, color: "bg-red-100 text-red-600" },
+    { label: "Regions Visited", value: passport?.regionsVisited?.toString() || "0", icon: MapPin, color: "bg-blue-100 text-blue-600" },
+    { label: "Tours Booked", value: bookings.length.toString(), icon: Calendar, color: "bg-green-100 text-green-600" },
+    { label: "Passport Stamps", value: passport?.totalStamps?.toString() || "0", icon: Award, color: "bg-orange-100 text-orange-600" },
   ];
 
-  const savedPlaces = [
-    { name: "Fromagerie Laurent Dubois", location: "Paris, Île-de-France", rating: "4.9", image: "🧀" },
-    { name: "Ferme de la Brie", location: "Meaux, Île-de-France", rating: "4.8", image: "🚜" },
-    { name: "Maison du Comté", location: "Poligny, Bourgogne", rating: "5.0", image: "🏠" },
-  ];
+  const savedPlaces: any[] = []; // TODO: Implement saved places feature
 
-  const upcomingBookings = [
-    { tour: "Comté Aging Cave Tour", place: "Maison du Comté", date: "Jan 20, 2024", time: "2:00 PM", guests: 2 },
-    { tour: "Farm Visit & Tasting", place: "Ferme Alpine", date: "Jan 25, 2024", time: "10:00 AM", guests: 4 },
-  ];
+  const achievements: any[] = []; // TODO: Implement achievements feature
 
-  const achievements = [
-    { title: "First Stamp", description: "Visited your first fromagerie", unlocked: true, icon: "🎯" },
-    { title: "Regional Explorer", description: "Visited 5 different regions", unlocked: true, icon: "🗺️" },
-    { title: "Cheese Connoisseur", description: "Completed 10 tastings", unlocked: false, icon: "🧀", progress: 7 },
-    { title: "Farm Friend", description: "Visited 5 cheese farms", unlocked: false, icon: "🌾", progress: 3 },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const recentStamps = [
-    { region: "Île-de-France", place: "Fromagerie Dubois", date: "Jan 10", icon: "🏛️" },
-    { region: "Normandie", place: "Ferme Camembert", date: "Jan 8", icon: "🐄" },
-    { region: "Auvergne", place: "Maison du Bleu", date: "Jan 5", icon: "⛰️" },
-  ];
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800">{error}</p>
+        <button onClick={fetchDashboardData} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -127,7 +183,7 @@ export default function VisitorDashboard() {
             <Award className="w-5 h-5 text-orange-500" />
           </div>
           <div className="space-y-3">
-            {recentStamps.map((stamp, idx) => (
+            {recentStamps.map((stamp: { region: string; place: string; date: string; icon: string }, idx: number) => (
               <div key={idx} className="p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3 mb-1">
                   <span className="text-2xl">{stamp.icon}</span>

@@ -12,15 +12,17 @@ const addImageSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     // Verify business ownership
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true },
     });
 
@@ -50,14 +52,14 @@ export async function POST(
 
     // Get current max order
     const maxOrder = await prisma.businessImage.findFirst({
-      where: { businessId: params.id },
+      where: { businessId: id },
       orderBy: { displayOrder: 'desc' },
       select: { displayOrder: true },
     });
 
     const image = await prisma.businessImage.create({
       data: {
-        businessId: params.id,
+        businessId: id,
         url: validation.data.url,
         displayOrder: validation.data.displayOrder ?? (maxOrder?.displayOrder ?? -1) + 1,
         caption: validation.data.caption,
@@ -70,7 +72,6 @@ export async function POST(
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Add image error:', error);
     return NextResponse.json(
       { error: 'An error occurred while adding image' },
       { status: 500 }
@@ -80,11 +81,13 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
+
+    const { id } = await params;
 
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get('imageId');
@@ -126,8 +129,7 @@ export async function DELETE(
       const key = url.pathname.substring(1); // Remove leading /
       await deleteFromS3(key);
     } catch (err) {
-      console.error('S3 delete error:', err);
-      // Continue with DB deletion even if S3 fails
+      // S3 deletion failed, continue with DB deletion
     }
 
     // Delete from database
@@ -140,7 +142,6 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Delete image error:', error);
     return NextResponse.json(
       { error: 'An error occurred while deleting image' },
       { status: 500 }

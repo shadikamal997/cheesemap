@@ -7,6 +7,7 @@ export interface AuthenticatedRequest extends NextRequest {
     userId: string;
     email: string;
     role: string;
+    emailVerified: boolean;
   };
 }
 
@@ -35,6 +36,7 @@ export async function getUserFromRequest(request: NextRequest) {
       email: true,
       role: true,
       isActive: true,
+      emailVerified: true,
     },
   });
 
@@ -46,6 +48,7 @@ export async function getUserFromRequest(request: NextRequest) {
     userId: user.id,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified,
   };
 }
 
@@ -61,7 +64,15 @@ export async function requireAuth(request: NextRequest) {
       { status: 401 }
     );
   }
+// Check email verification
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: 'Email verification required. Please verify your email address.' },
+      { status: 403 }
+    );
+  }
 
+  
   return user;
 }
 

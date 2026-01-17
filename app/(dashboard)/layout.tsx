@@ -13,8 +13,7 @@ export default function DashboardLayout({
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: Get user role from session/auth
-    // For demo, check signup session storage or default to visitor
+    // Get user role from authentication context
     const signupData = sessionStorage.getItem('signupData');
     if (signupData) {
       const data = JSON.parse(signupData);

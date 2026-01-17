@@ -12,18 +12,19 @@ const hoursSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const hours = await prisma.businessHours.findMany({
-      where: { businessId: params.id },
+      where: { businessId: id },
       orderBy: { dayOfWeek: 'asc' },
     });
 
     return NextResponse.json({ hours });
 
   } catch (error) {
-    console.error('Get hours error:', error);
     return NextResponse.json(
       { error: 'An error occurred while fetching hours' },
       { status: 500 }
@@ -33,15 +34,17 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     // Verify ownership
     const business = await prisma.business.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true },
     });
 
@@ -71,19 +74,19 @@ export async function POST(
 
     // Delete existing hours
     await prisma.businessHours.deleteMany({
-      where: { businessId: params.id },
+      where: { businessId: id },
     });
 
     // Create new hours
     const hours = await prisma.businessHours.createMany({
       data: validation.data.map(h => ({
         ...h,
-        businessId: params.id,
+        businessId: id,
       })),
     });
 
     const newHours = await prisma.businessHours.findMany({
-      where: { businessId: params.id },
+      where: { businessId: id },
       orderBy: { dayOfWeek: 'asc' },
     });
 
@@ -93,7 +96,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Update hours error:', error);
     return NextResponse.json(
       { error: 'An error occurred while updating hours' },
       { status: 500 }

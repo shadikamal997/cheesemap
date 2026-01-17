@@ -1,103 +1,105 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MapPin, Award, Trophy, Target, Sparkles, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/auth/apiClient";
 
 export default function PassportPage() {
+  const [passport, setPassport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPassport();
+  }, []);
+
+  const fetchPassport = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/passport');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPassport(data.passport);
+      }
+    } catch (err) {
+      console.error('Error fetching passport:', err);
+      setError('Failed to load passport');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading passport...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800">{error}</p>
+        <button onClick={fetchPassport} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg">Retry</button>
+      </div>
+    );
+  }
+
+  const recentStamps = (passport?.stamps || []).slice(0, 8).map((s: any) => ({
+    id: s.id,
+    cheese: s.cheeseName || 'Visit',
+    location: `${s.business.displayName} - ${s.business.city}`,
+    region: s.region,
+    date: new Date(s.acquiredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    icon: "🧀",
+    badge: s.stampType.replace('_', ' '),
+  }));
+
   const regions = [
     {
       name: "Île-de-France",
-      stamps: 5,
+      stamps: passport?.stamps?.filter((s: any) => s.region === "Île-de-France").length || 0,
       total: 8,
-      percentage: 62,
+      percentage: 0,
       cheeses: ["Brie de Meaux", "Brie de Melun", "Coulommiers"],
       color: "bg-blue-500",
     },
     {
       name: "Bourgogne-Franche-Comté",
-      stamps: 4,
+      stamps: passport?.stamps?.filter((s: any) => s.region === "Bourgogne-Franche-Comté").length || 0,
       total: 12,
-      percentage: 33,
+      percentage: 0,
       cheeses: ["Comté", "Morbier", "Époisses"],
       color: "bg-green-500",
     },
     {
       name: "Auvergne-Rhône-Alpes",
-      stamps: 3,
+      stamps: passport?.stamps?.filter((s: any) => s.region === "Auvergne-Rhône-Alpes").length || 0,
       total: 15,
-      percentage: 20,
+      percentage: 0,
       cheeses: ["Beaufort", "Reblochon", "Saint-Marcellin"],
       color: "bg-purple-500",
     },
     {
       name: "Normandie",
-      stamps: 2,
+      stamps: passport?.stamps?.filter((s: any) => s.region === "Normandie").length || 0,
       total: 6,
-      percentage: 33,
+      percentage: 0,
       cheeses: ["Camembert de Normandie", "Pont-l'Évêque"],
       color: "bg-yellow-500",
     },
-    {
-      name: "Occitanie",
-      stamps: 2,
-      total: 10,
-      percentage: 20,
-      cheeses: ["Roquefort", "Rocamadour"],
-      color: "bg-red-500",
-    },
-    {
-      name: "Nouvelle-Aquitaine",
-      stamps: 1,
-      total: 7,
-      percentage: 14,
-      cheeses: ["Ossau-Iraty"],
-      color: "bg-indigo-500",
-    },
-  ];
-
-  const recentStamps = [
-    {
-      id: 1,
-      cheese: "Comté AOP 18 Months",
-      location: "Maison du Comté - Poligny",
-      region: "Bourgogne-Franche-Comté",
-      date: "Jan 15, 2024",
-      icon: "🧀",
-      badge: "Cave Explorer",
-    },
-    {
-      id: 2,
-      cheese: "Brie de Meaux AOP",
-      location: "Ferme de la Brie - Meaux",
-      region: "Île-de-France",
-      date: "Jan 10, 2024",
-      icon: "🚜",
-      badge: "Farm Visitor",
-    },
-    {
-      id: 3,
-      cheese: "Roquefort Société AOP",
-      location: "Caves de Roquefort - Roquefort-sur-Soulzon",
-      region: "Occitanie",
-      date: "Jan 5, 2024",
-      icon: "🏔️",
-      badge: "Cave Master",
-    },
-    {
-      id: 4,
-      cheese: "Époisses de Bourgogne AOP",
-      location: "Fromagerie Gaugry - Époisses",
-      region: "Bourgogne-Franche-Comté",
-      date: "Dec 28, 2023",
-      icon: "🏛️",
-      badge: "Heritage Hunter",
-    },
-  ];
+  ].map(r => ({ ...r, percentage: Math.round((r.stamps / r.total) * 100) }));
 
   const achievements = [
     {
-      title: "Regional Explorer",
-      description: "Visited 6 different regions",
+      title: "Region Explorer",
+      description: "Visited all regions",
       progress: 6,
       total: 13,
       icon: "🗺️",
@@ -232,7 +234,7 @@ export default function PassportPage() {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Stamps</h2>
         <div className="space-y-3">
-          {recentStamps.map((stamp) => (
+          {recentStamps.map((stamp: { id: string; cheese: string; location: string; region: string; date: string; icon: string; badge: string }) => (
             <div
               key={stamp.id}
               className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"

@@ -93,7 +93,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Token refresh error:', error);
     return NextResponse.json(
       { error: 'An error occurred while refreshing token' },
       { status: 500 }

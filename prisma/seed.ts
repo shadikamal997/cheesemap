@@ -112,11 +112,106 @@ async function main() {
   }
   console.log(`✅ ${achievements.length} achievements created\n`);
 
+  // ============================================================================
+  // TEST BUSINESS ACCOUNTS (Minimal)
+  // ============================================================================
+  console.log('Creating test business accounts...');
+  
+  // Shop Owner
+  const shopOwnerPassword = await bcrypt.hash('Shop123!@#', 12);
+  const shopOwner = await prisma.user.upsert({
+    where: { email: 'shop@test.cheesemap.fr' },
+    update: {},
+    create: {
+      email: 'shop@test.cheesemap.fr',
+      passwordHash: shopOwnerPassword,
+      role: 'SHOP',
+      firstName: 'Test',
+      lastName: 'Shop',
+      emailVerified: true,
+      isActive: true,
+      locale: 'fr',
+      timezone: 'Europe/Paris',
+    },
+  });
+
+  // Farm Owner
+  const farmOwnerPassword = await bcrypt.hash('Farm123!@#', 12);
+  const farmOwner = await prisma.user.upsert({
+    where: { email: 'farm@test.cheesemap.fr' },
+    update: {},
+    create: {
+      email: 'farm@test.cheesemap.fr',
+      passwordHash: farmOwnerPassword,
+      role: 'FARM',
+      firstName: 'Test',
+      lastName: 'Farm',
+      emailVerified: true,
+      isActive: true,
+      locale: 'fr',
+      timezone: 'Europe/Paris',
+    },
+  });
+
+  // Test Shop Business (PENDING status)
+  const testShop = await prisma.business.upsert({
+    where: { ownerId: shopOwner.id },
+    update: {},
+    create: {
+      ownerId: shopOwner.id,
+      type: 'SHOP',
+      legalName: 'Fromagerie Test SARL',
+      displayName: 'La Fromagerie Test',
+      siret: '12345678900001',
+      description: 'Test cheese shop for development and testing',
+      addressLine1: '1 Rue du Fromage',
+      city: 'Paris',
+      postalCode: '75001',
+      region: 'Île-de-France',
+      latitude: 48.8566,
+      longitude: 2.3522,
+      phone: '+33 1 23 45 67 89',
+      email: 'contact@fromagerie-test.fr',
+      verificationStatus: 'PENDING',
+      isVisible: false,
+    },
+  });
+
+  // Test Farm Business (PENDING status)
+  const testFarm = await prisma.business.upsert({
+    where: { ownerId: farmOwner.id },
+    update: {},
+    create: {
+      ownerId: farmOwner.id,
+      type: 'FARM',
+      legalName: 'Ferme Test Bio EARL',
+      displayName: 'La Ferme Test',
+      siret: '12345678900002',
+      description: 'Test organic farm for development and testing',
+      addressLine1: 'Chemin de la Ferme',
+      city: 'Reims',
+      postalCode: '51100',
+      region: 'Grand Est',
+      latitude: 49.2583,
+      longitude: 4.0317,
+      phone: '+33 3 26 12 34 56',
+      email: 'contact@ferme-test.fr',
+      verificationStatus: 'PENDING',
+      isVisible: false,
+    },
+  });
+
+  console.log(`✅ Test shop created: ${testShop.displayName} (${testShop.verificationStatus})`);
+  console.log(`✅ Test farm created: ${testFarm.displayName} (${testFarm.verificationStatus})\n`);
+
   console.log('✅ Database seeding completed!\n');
   console.log('📊 Summary:');
   console.log(`   - Admin user: admin@cheesemap.fr (password: Admin123!@#)`);
+  console.log(`   - Test Shop: shop@test.cheesemap.fr (password: Shop123!@#)`);
+  console.log(`   - Test Farm: farm@test.cheesemap.fr (password: Farm123!@#)`);
   console.log(`   - Delivery zones: ${deliveryZones.length} countries`);
   console.log(`   - Achievements: ${achievements.length} unlockables`);
+  console.log(`   - Businesses: 2 (pending verification)`);
 }
 
 main()

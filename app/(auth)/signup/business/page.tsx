@@ -1,26 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Store, Tractor } from "lucide-react";
+import { geocodeAddress } from "@/lib/geocoding";
 
-export default function SignupBusinessPage() {
+function SignupBusinessForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const role = searchParams.get("role") || "shop";
 
   const [formData, setFormData] = useState({
-    businessName: "",
+    legalName: "",
+    displayName: "",
+    siret: "",
     businessType: role,
     address: "",
     city: "",
     postalCode: "",
     region: "",
     phone: "",
+    email: "",
     website: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Check if previous step was completed
@@ -51,10 +56,16 @@ export default function SignupBusinessPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     const newErrors: Record<string, string> = {};
 
     // Validation
-    if (!formData.businessName) newErrors.businessName = "Business name is required";
+    if (!formData.legalName) newErrors.legalName = "Legal name is required";
+    if (!formData.displayName) newErrors.displayName = "Display name is required";
+    if (!formData.siret) newErrors.siret = "SIRET is required";
+    if (!/^\d{14}$/.test(formData.siret)) {
+      newErrors.siret = "SIRET must be 14 digits";
+    }
     if (!formData.address) newErrors.address = "Address is required";
     if (!formData.city) newErrors.city = "City is required";
     if (!formData.postalCode) newErrors.postalCode = "Postal code is required";
@@ -65,18 +76,81 @@ export default function SignupBusinessPage() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      setLoading(false);
       return;
     }
 
-    // Store business data
-    const signupData = sessionStorage.getItem("signupData");
-    if (signupData) {
-      const userData = JSON.parse(signupData);
-      sessionStorage.setItem("signupData", JSON.stringify({ ...userData, business: formData }));
-    }
+    try {
+      // Geocode the address
+      const geocodingResult = await geocodeAddress(
+        formData.address,
+        formData.city,
+        formData.postalCode
+      );
 
-    // Navigate to modules selection
-    router.push(`/signup/modules?role=${role}`);
+      if (!geocodingResult.success) {
+        setErrors({ address: geocodingResult.error.message });
+        setLoading(false);
+        return;
+      }
+
+      // Get auth token from sessionStorage
+      const authData = sessionStorage.getItem("signupData");
+      if (!authData) {
+        router.push("/signup/role");
+        return;
+      }
+
+      const { token } = JSON.parse(authData);
+      
+      // Prepare business creation payload
+      const payload = {
+        type: role === 'farm' ? 'FARM' : 'SHOP',
+        legalName: formData.legalName,
+        displayName: formData.displayName,
+        siret: formData.siret,
+        addressLine1: formData.address,
+        city: formData.city,
+        postalCode: formData.postalCode,
+        region: formData.region,
+        latitude: geocodingResult.data.latitude,
+        longitude: geocodingResult.data.longitude,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        website: formData.website || undefined,
+      };
+
+      // Call business creation API
+      const response = await fetch('/api/businesses/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create business');
+      }
+
+      // Store business ID for next step
+      const updatedAuthData = JSON.parse(authData);
+      updatedAuthData.businessId = data.business.id;
+      sessionStorage.setItem("signupData", JSON.stringify(updatedAuthData));
+
+      // Navigate to modules selection
+      router.push(`/signup/modules?role=${role}`);
+    } catch (error) {
+      console.error('Business creation error:', error);
+      setErrors({ 
+        general: error instanceof Error ? error.message : 'Failed to create business. Please try again.' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -125,20 +199,60 @@ export default function SignupBusinessPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Business Name */}
+            {/* General Error */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-600 text-sm">{errors.general}</p>
+              </div>
+            )}
+
+            {/* Legal Name */}
             <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
-                Business Name *
+              <label htmlFor="legalName" className="block text-sm font-medium text-gray-700 mb-1">
+                Legal Business Name *
               </label>
               <input
-                id="businessName"
+                id="legalName"
                 type="text"
-                value={formData.businessName}
-                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                value={formData.legalName}
+                onChange={(e) => setFormData({ ...formData, legalName: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Société Fromagère du Mont d'Or"
+              />
+              {errors.legalName && <p className="text-red-600 text-sm mt-1">{errors.legalName}</p>}
+            </div>
+
+            {/* Display Name */}
+            <div>
+              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+                Display Name * <span className="text-gray-500 text-xs">(Shown to customers)</span>
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 placeholder={role === "farm" ? "Ferme du Mont d'Or" : "La Fromagerie Parisienne"}
               />
-              {errors.businessName && <p className="text-red-600 text-sm mt-1">{errors.businessName}</p>}
+              {errors.displayName && <p className="text-red-600 text-sm mt-1">{errors.displayName}</p>}
+            </div>
+
+            {/* SIRET */}
+            <div>
+              <label htmlFor="siret" className="block text-sm font-medium text-gray-700 mb-1">
+                SIRET Number * <span className="text-gray-500 text-xs">(14 digits)</span>
+              </label>
+              <input
+                id="siret"
+                type="text"
+                value={formData.siret}
+                onChange={(e) => setFormData({ ...formData, siret: e.target.value.replace(/\D/g, '') })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="12345678901234"
+                maxLength={14}
+              />
+              {errors.siret && <p className="text-red-600 text-sm mt-1">{errors.siret}</p>}
             </div>
 
             {/* Address */}
@@ -227,6 +341,21 @@ export default function SignupBusinessPage() {
               />
             </div>
 
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Business Email (Optional)
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="contact@example.com"
+              />
+            </div>
+
             {/* Website */}
             <div>
               <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
@@ -303,20 +432,37 @@ export default function SignupBusinessPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                disabled={loading}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Back
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Continue
+                {loading ? 'Creating Business...' : 'Continue'}
               </button>
             </div>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupBusinessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignupBusinessForm />
+    </Suspense>
   );
 }

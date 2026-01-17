@@ -17,15 +17,17 @@ const updateInventorySchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     // Verify ownership
     const item = await prisma.shopInventory.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { business: { select: { ownerId: true } } },
     });
 
@@ -54,7 +56,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.shopInventory.update({
-      where: { id: params.id },
+      where: { id },
       data: validation.data,
     });
 
@@ -64,7 +66,6 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error('Update inventory error:', error);
     return NextResponse.json(
       { error: 'An error occurred while updating inventory' },
       { status: 500 }
@@ -74,14 +75,16 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
+    const { id } = await params;
+
     const item = await prisma.shopInventory.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { business: { select: { ownerId: true } } },
     });
 
@@ -100,7 +103,7 @@ export async function DELETE(
     }
 
     await prisma.shopInventory.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({
@@ -108,7 +111,6 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Delete inventory error:', error);
     return NextResponse.json(
       { error: 'An error occurred while deleting inventory' },
       { status: 500 }

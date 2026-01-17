@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { LogOut, Bell } from "lucide-react";
 import DashboardSidebar from "@/components/nav/DashboardSidebar";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function DashboardLayout({
   children,
@@ -11,36 +12,55 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // TODO: Get user role from session/auth
-    // For demo, check signup session storage or default to visitor
-    const signupData = sessionStorage.getItem('signupData');
-    if (signupData) {
-      const data = JSON.parse(signupData);
-      setUserRole(data.role || 'visitor');
-    } else {
-      setUserRole('visitor'); // Default role
+    if (loading) return;
+
+    // If not authenticated, redirect to login
+    if (!user) {
+      router.push('/login');
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (userRole && window.location.pathname === '/dashboard') {
-      // Redirect to role-specific dashboard
+    // Check if user has access to current dashboard
+    const userRole = user.role.toLowerCase();
+    const dashboardPath = pathname.split('/')[2]; // Get role from /dashboard/{role}
+
+    // Allow access to own dashboard or admin to all
+    if (dashboardPath && dashboardPath !== userRole && user.role !== 'ADMIN') {
+      // Redirect to user's proper dashboard
       router.push(`/dashboard/${userRole}`);
+      return;
     }
-  }, [userRole, router]);
+
+    setIsChecking(false);
+  }, [user, loading, pathname, router]);
 
   const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem('signupData');
-    // TODO: Call NextAuth signOut when implemented
-    // signOut({ redirect: false });
-    
-    // Redirect to home page
-    router.push('/');
+    logout();
   };
+
+  // Show loading state while checking auth
+  if (loading || isChecking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if no user (will redirect)
+  if (!user) {
+    return null;
+  }
+
+  const userRole = user.role.toLowerCase();
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
