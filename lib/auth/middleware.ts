@@ -64,13 +64,13 @@ export async function requireAuth(request: NextRequest) {
       { status: 401 }
     );
   }
-// Check email verification
-  if (!user.emailVerified) {
-    return NextResponse.json(
-      { error: 'Email verification required. Please verify your email address.' },
-      { status: 403 }
-    );
-  }
+  // Email verification disabled for development
+  // if (!user.emailVerified) {
+  //   return NextResponse.json(
+  //     { error: 'Email verification required. Please verify your email address.' },
+  //     { status: 403 }
+  //   );
+  // }
 
   
   return user;

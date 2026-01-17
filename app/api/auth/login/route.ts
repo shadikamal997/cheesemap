@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check email verification
-    if (!user.emailVerified) {
-      return NextResponse.json(
-        { error: 'Please verify your email address before logging in.' },
-        { status: 403 }
-      );
-    }
+    // Email verification disabled for development
+    // if (!user.emailVerified) {
+    //   return NextResponse.json(
+    //     { error: 'Please verify your email address before logging in.' },
+    //     { status: 403 }
+    //   );
+    // }
 
     // Generate tokens
     const tokenPayload = {
