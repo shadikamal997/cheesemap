@@ -155,8 +155,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set user
     setUser(data.user);
 
-    // Redirect based on role
+    // Check if user has a pending business signup (shop/farm without business)
+    const pendingRole = sessionStorage.getItem('pendingRole');
     const role = data.user.role.toLowerCase();
+    
+    if (pendingRole && (role === 'shop' || role === 'farm')) {
+      // Check if user has a business
+      const businessResponse = await fetch('/api/businesses', {
+        headers: {
+          'Authorization': `Bearer ${data.accessToken}`
+        }
+      });
+      
+      if (businessResponse.ok) {
+        const businessData = await businessResponse.json();
+        
+        // If no businesses found, redirect to complete signup
+        if (!businessData.businesses || businessData.businesses.length === 0) {
+          sessionStorage.removeItem('pendingRole');
+          router.push(`/signup/business?role=${role}`);
+          return;
+        }
+      }
+      
+      sessionStorage.removeItem('pendingRole');
+    }
+
+    // Redirect based on role
     router.push(`/dashboard/${role}`);
   };
 

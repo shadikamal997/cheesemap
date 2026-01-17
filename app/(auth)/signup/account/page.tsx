@@ -89,22 +89,12 @@ function SignupAccountForm() {
 
       const data = await response.json();
 
-      // Store token and data for next step
-      sessionStorage.setItem("signupData", JSON.stringify({ 
-        ...formData, 
-        role,
-        token: data.token,
-        userId: data.user.id 
-      }));
+      // Store role for after login
+      sessionStorage.setItem("pendingRole", role);
+      sessionStorage.setItem("registeredEmail", formData.email);
 
-      // Navigate to next step
-      if (role === "shop" || role === "farm") {
-        router.push(`/signup/business?role=${role}`);
-      } else {
-        // For visitors, we're done - redirect to success
-        sessionStorage.removeItem('signupData');
-        router.push("/signup/success");
-      }
+      // Registration successful - redirect to email verification page
+      router.push("/verify-email-pending");
     } catch (error) {
       console.error('Registration error:', error);
       setErrors({ 

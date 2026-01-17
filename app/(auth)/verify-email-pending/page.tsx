@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +11,14 @@ export default function VerifyEmailPendingPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  // Auto-fill email from registration
+  useEffect(() => {
+    const registeredEmail = sessionStorage.getItem('registeredEmail');
+    if (registeredEmail) {
+      setEmail(registeredEmail);
+    }
+  }, []);
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
