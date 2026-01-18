@@ -83,28 +83,89 @@ export default function BusinessesPage() {
       {/* Pricing */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12">Simple, Transparent Pricing</h2>
-          <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
+          <p className="text-center text-gray-600 mb-6 max-w-2xl mx-auto">
+            Everything you need to grow your cheese business, with no hidden fees.
+          </p>
+          
+          {/* Trial Messaging */}
+          <div className="max-w-2xl mx-auto mb-12 bg-green-50 border border-green-200 rounded-lg px-6 py-4 text-center">
+            <p className="text-green-900 font-semibold text-lg">
+              🎁 <strong>Premier mois offert</strong> — Essai gratuit de 30 jours
+            </p>
+            <p className="text-green-700 text-sm mt-2">
+              Aucun paiement pendant les 30 premiers jours • Carte bancaire requise • Annulation à tout moment
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
-              { name: "Free", price: "€0", features: ["Profile + Map", "Basic listing", "Customer reviews"] },
-              { name: "Starter", price: "€29", features: ["Everything in Free", "Inventory management", "Order processing"] },
-              { name: "Pro", price: "€59", features: ["Everything in Starter", "Tour bookings", "Analytics dashboard"] },
-              { name: "Premium", price: "€99", features: ["Everything in Pro", "Promotions", "Priority support"] },
+              { 
+                name: "Essential", 
+                price: "€25", 
+                description: "Perfect for getting started",
+                features: ["Up to 10 products", "30 orders/month", "Customer support", "Map visibility", "SKU tracking"] 
+              },
+              { 
+                name: "Growth", 
+                price: "€55", 
+                description: "For growing businesses",
+                highlight: true,
+                features: ["Up to 50 products", "Unlimited orders", "Tour management (5 active)", "Analytics dashboard", "Priority support"] 
+              },
+              { 
+                name: "Professional", 
+                price: "€95", 
+                description: "For established businesses",
+                features: ["Unlimited products", "Unlimited orders", "Unlimited tours", "Advanced analytics", "Promotional tools", "Dedicated support"] 
+              },
             ].map((plan) => (
-              <div key={plan.name} className="bg-white rounded-lg p-6 shadow-sm border">
-                <h3 className="font-semibold text-lg mb-2">{plan.name}</h3>
-                <p className="text-3xl font-bold mb-4">{plan.price}<span className="text-sm text-gray-600">/mo</span></p>
-                <ul className="space-y-2 text-sm">
+              <div 
+                key={plan.name} 
+                className={`rounded-lg p-6 shadow-sm border transition-all ${
+                  plan.highlight 
+                    ? "bg-orange-600 text-white border-orange-600 scale-105" 
+                    : "bg-white border-gray-200 hover:shadow-md"
+                }`}
+              >
+                {plan.highlight && (
+                  <div className="inline-block px-3 py-1 bg-orange-500 text-white text-xs font-semibold rounded-full mb-3">
+                    Most Popular
+                  </div>
+                )}
+                <h3 className={`font-semibold text-lg mb-1 ${plan.highlight ? "text-white" : "text-gray-900"}`}>
+                  {plan.name}
+                </h3>
+                <p className={`text-sm mb-4 ${plan.highlight ? "text-orange-100" : "text-gray-600"}`}>
+                  {plan.description}
+                </p>
+                <p className="text-3xl font-bold mb-4">
+                  {plan.price}<span className={`text-sm ${plan.highlight ? "text-orange-100" : "text-gray-600"}`}>/mo</span>
+                </p>
+                <ul className={`space-y-2 text-sm mb-6 ${plan.highlight ? "text-orange-50" : "text-gray-700"}`}>
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start">
-                      <span className="text-green-600 mr-2">✓</span>
+                      <span className={`mr-2 ${plan.highlight ? "text-orange-200" : "text-orange-600"}`}>✓</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
+                <Link
+                  href="/signup"
+                  className={`block text-center py-2 px-4 rounded-lg font-semibold transition ${
+                    plan.highlight
+                      ? "bg-white text-orange-600 hover:bg-gray-100"
+                      : "bg-orange-600 text-white hover:bg-orange-700"
+                  }`}
+                >
+                  Get Started
+                </Link>
               </div>
             ))}
           </div>
+          <p className="text-center text-sm text-gray-600 mt-12">
+            All plans include 30-day billing cycle, email support, and full access to map visibility.
+          </p>
         </div>
       </section>
 

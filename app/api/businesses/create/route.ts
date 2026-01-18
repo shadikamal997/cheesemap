@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/middleware';
+import { initializeTrial } from '@/lib/trial';
 
 const createBusinessSchema = z.object({
   type: z.enum(['SHOP', 'FARM', 'BOTH']),
@@ -19,6 +20,7 @@ const createBusinessSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional(),
   website: z.string().url().optional().or(z.literal('')),
+  planId: z.string().optional(), // Plan to assign (defaults to ESSENTIAL)
 });
 
 export async function POST(request: NextRequest) {
@@ -102,9 +104,29 @@ export async function POST(request: NextRequest) {
       data: { role: data.type === 'FARM' ? 'FARM' : 'SHOP' },
     });
 
+    // Initialize 30-day free trial with ESSENTIAL plan
+    let trialInfo = null;
+    try {
+      // Get ESSENTIAL plan (default trial plan)
+      const essentialPlan = await prisma.subscriptionPlan.findUnique({
+        where: { tier: 'ESSENTIAL' },
+      });
+
+      if (!essentialPlan) {
+        throw new Error('ESSENTIAL plan not found. Please contact support.');
+      }
+
+      const trial = await initializeTrial(business.id, essentialPlan.id);
+      trialInfo = trial;
+    } catch (trialError) {
+      console.error('Error initializing trial:', trialError);
+      // Don't fail the entire signup, but log it
+    }
+
     return NextResponse.json({
       message: 'Business created successfully',
       business,
+      trial: trialInfo,
     }, { status: 201 });
 
   } catch (error) {

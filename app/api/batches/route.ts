@@ -17,7 +17,7 @@ const batchSchema = z.object({
   unitType: z.enum(['KG', 'PIECE', 'LITER', 'GRAM', 'PORTION']),
   minimumAgeDays: z.number().min(0).default(0),
   targetAgeDays: z.number().min(0).optional(),
-  status: z.enum(['AGING', 'READY', 'SOLD', 'DISCARDED']).default('AGING'),
+  status: z.enum(['DRAFT', 'PRODUCTION', 'AGING', 'READY', 'FINISHED', 'CONVERTED', 'DEPLETED', 'FAILED', 'DISCARDED', 'SOLD']).default('DRAFT'),
   location: z.string().optional(),
   temperature: z.number().optional(),
   humidity: z.number().min(0).max(100).optional(),

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PricingTier, SupportLevel, SubscriptionStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -204,6 +204,138 @@ async function main() {
   console.log(`✅ Test shop created: ${testShop.displayName} (${testShop.verificationStatus})`);
   console.log(`✅ Test farm created: ${testFarm.displayName} (${testFarm.verificationStatus})\n`);
 
+  // ============================================================================
+  // PRICING PLANS (AUTHORITATIVE)
+  // ============================================================================
+  console.log('Creating subscription plans...');
+  
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const essentialPlan = await prisma.subscriptionPlan.upsert({
+    where: { tier: PricingTier.ESSENTIAL },
+    update: {},
+    create: {
+      tier: PricingTier.ESSENTIAL,
+      name: 'Essential',
+      description: 'Perfect for starting your cheese business',
+      priceEur: 25,
+      billingPeriodDays: 30,
+      maxProducts: 10,
+      maxOrdersPerMonth: 30,
+      maxActiveTours: 0,
+      hasAnalytics: false,
+      hasPromotions: false,
+      supportLevel: SupportLevel.STANDARD,
+      supportResponseTimeHours: 72,
+      isActive: true,
+      displayOrder: 0,
+    },
+  });
+
+  const growthPlan = await prisma.subscriptionPlan.upsert({
+    where: { tier: PricingTier.GROWTH },
+    update: {},
+    create: {
+      tier: PricingTier.GROWTH,
+      name: 'Growth',
+      description: 'For growing cheese businesses',
+      priceEur: 55,
+      billingPeriodDays: 30,
+      maxProducts: 50,
+      maxOrdersPerMonth: -1, // unlimited
+      maxActiveTours: 5,
+      hasAnalytics: true,
+      hasPromotions: false,
+      supportLevel: SupportLevel.PRIORITY,
+      supportResponseTimeHours: 24,
+      isActive: true,
+      displayOrder: 1,
+    },
+  });
+
+  const professionalPlan = await prisma.subscriptionPlan.upsert({
+    where: { tier: PricingTier.PROFESSIONAL },
+    update: {},
+    create: {
+      tier: PricingTier.PROFESSIONAL,
+      name: 'Professional',
+      description: 'For established cheese businesses',
+      priceEur: 95,
+      billingPeriodDays: 30,
+      maxProducts: -1, // unlimited
+      maxOrdersPerMonth: -1, // unlimited
+      maxActiveTours: -1, // unlimited
+      hasAnalytics: true,
+      hasPromotions: true,
+      supportLevel: SupportLevel.DEDICATED,
+      supportResponseTimeHours: 1,
+      isActive: true,
+      displayOrder: 2,
+    },
+  });
+
+  console.log(`✅ Pricing plans created\n`);
+
+  // ============================================================================
+  // SUBSCRIPTIONS FOR TEST BUSINESSES
+  // ============================================================================
+  console.log('Creating subscriptions for test businesses...');
+
+  // Essential plan for shop (in trial)
+  const shopSubscription = await prisma.businessSubscription.upsert({
+    where: { businessId: testShop.id },
+    update: {},
+    create: {
+      businessId: testShop.id,
+      planId: essentialPlan.id,
+      status: SubscriptionStatus.TRIAL,
+      trialStartAt: now,
+      trialEndAt: thirtyDaysFromNow,
+      trialActive: true,
+      currentPeriodStart: now,
+      currentPeriodEnd: thirtyDaysFromNow,
+      nextBillingDate: thirtyDaysFromNow,
+      autoRenew: true,
+      usage: {
+        create: {
+          productsCount: 0,
+          ordersThisPeriod: 0,
+          activeToursCount: 0,
+          promotionsUsed: 0,
+        },
+      },
+    },
+  });
+
+  // Growth plan for farm (in trial)
+  const farmSubscription = await prisma.businessSubscription.upsert({
+    where: { businessId: testFarm.id },
+    update: {},
+    create: {
+      businessId: testFarm.id,
+      planId: growthPlan.id,
+      status: SubscriptionStatus.TRIAL,
+      trialStartAt: now,
+      trialEndAt: thirtyDaysFromNow,
+      trialActive: true,
+      currentPeriodStart: now,
+      currentPeriodEnd: thirtyDaysFromNow,
+      nextBillingDate: thirtyDaysFromNow,
+      autoRenew: true,
+      usage: {
+        create: {
+          productsCount: 0,
+          ordersThisPeriod: 0,
+          activeToursCount: 0,
+          promotionsUsed: 0,
+        },
+      },
+    },
+  });
+
+  console.log(`✅ Subscriptions created\n`);
+
   console.log('✅ Database seeding completed!\n');
   console.log('📊 Summary:');
   console.log(`   - Admin user: admin@cheesemap.fr (password: Admin123!@#)`);
@@ -212,6 +344,8 @@ async function main() {
   console.log(`   - Delivery zones: ${deliveryZones.length} countries`);
   console.log(`   - Achievements: ${achievements.length} unlockables`);
   console.log(`   - Businesses: 2 (pending verification)`);
+  console.log(`   - Pricing Plans: 3 (Essential, Growth, Professional)`);
+  console.log(`   - Subscriptions: 2 (shop: Essential, farm: Growth)`);
 }
 
 main()

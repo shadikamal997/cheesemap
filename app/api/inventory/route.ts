@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth/middleware';
+import { checkCanCreateProduct, incrementProductUsage, PricingError } from '@/lib/plan-enforcement';
 
 const inventorySchema = z.object({
   cheeseName: z.string().min(2, 'Cheese name is required'),
@@ -104,6 +105,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ✅ CHECK PLAN LIMIT BEFORE CREATING PRODUCT
+    try {
+      await checkCanCreateProduct(business.id);
+    } catch (error) {
+      if (error instanceof PricingError) {
+        return NextResponse.json(
+          {
+            error: error.message,
+            code: error.code,
+          },
+          { status: 402 } // 402 Payment Required
+        );
+      }
+      throw error;
+    }
+
     // Check SKU uniqueness
     const skuExists = await prisma.shopInventory.findUnique({
       where: { sku: validation.data.sku },
@@ -122,6 +139,14 @@ export async function POST(request: NextRequest) {
         businessId: business.id,
       },
     });
+
+    // ✅ INCREMENT USAGE AFTER SUCCESSFUL CREATION
+    try {
+      await incrementProductUsage(business.id);
+    } catch (err) {
+      console.error('Failed to update usage:', err);
+      // Don't fail the request if usage update fails
+    }
 
     return NextResponse.json({
       message: 'Inventory item created successfully',

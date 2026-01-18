@@ -44,6 +44,26 @@ enum VerificationStatus {
   SUSPENDED
 }
 
+enum PricingTier {
+  ESSENTIAL
+  GROWTH
+  PROFESSIONAL
+}
+
+enum SupportLevel {
+  STANDARD
+  PRIORITY
+  DEDICATED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PENDING
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -110,9 +130,11 @@ enum BookingStatus {
 }
 
 enum BatchStatus {
+  DRAFT
   PRODUCTION
   AGING
   READY
+  FINISHED
   CONVERTED
   DEPLETED
   FAILED
@@ -254,6 +276,93 @@ model RefreshToken {
 }
 
 // ============================================================================
+// PRICING & SUBSCRIPTION
+// ============================================================================
+
+model SubscriptionPlan {
+  id                    String        @id @default(cuid())
+  tier                  PricingTier   @unique
+  
+  name                  String
+  description           String?
+  priceEur              Float
+  billingPeriodDays     Int           @default(30)
+  
+  // Limits
+  maxProducts           Int
+  maxOrdersPerMonth     Int
+  maxActiveTours        Int
+  hasAnalytics          Boolean       @default(false)
+  hasPromotions         Boolean       @default(false)
+  
+  // Support
+  supportLevel          SupportLevel
+  supportResponseTimeHours Int
+  
+  // Status
+  isActive              Boolean       @default(true)
+  displayOrder          Int           @default(0)
+  
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  subscriptions         BusinessSubscription[]
+  
+  @@map("subscription_plans")
+}
+
+model BusinessSubscription {
+  id                    String              @id @default(cuid())
+  businessId            String              @unique
+  business              Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  planId                String
+  plan                  SubscriptionPlan    @relation(fields: [planId], references: [id])
+  
+  status                SubscriptionStatus  @default(TRIAL)
+  
+  // Trial (exactly 30 days)
+  trialStartAt          DateTime?
+  trialEndAt            DateTime?
+  trialActive           Boolean             @default(false)
+  
+  // Billing
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  nextBillingDate       DateTime
+  autoRenew             Boolean             @default(true)
+  
+  // Stripe
+  stripeSubscriptionId  String?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  usage                 PlanUsage?
+  
+  @@index([status, nextBillingDate, trialEndAt])
+  @@map("business_subscriptions")
+}
+
+model PlanUsage {
+  id                    String                  @id @default(cuid())
+  subscriptionId        String                  @unique
+  subscription          BusinessSubscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  productsCount         Int                     @default(0)
+  ordersThisPeriod      Int                     @default(0)
+  activeToursCount      Int                     @default(0)
+  promotionsUsed        Int                     @default(0)
+  
+  lastResetAt           DateTime                @default(now())
+  
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  
+  @@map("plan_usage")
+}
+
+// ============================================================================
 // BUSINESS PROFILES
 // ============================================================================
 
@@ -305,6 +414,7 @@ model Business {
   batches                 FarmBatch[]
   orders                  Order[]
   tours                   Tour[]
+  subscription            BusinessSubscription?
   deliverySettings        DeliverySettings?
   verificationRequests    VerificationRequest[]
   specialties             BusinessSpecialty[]
@@ -470,7 +580,7 @@ model FarmBatch {
   temperature       Float?
   humidity          Float?
   
-  status            BatchStatus      @default(PRODUCTION)
+  status            BatchStatus      @default(DRAFT)
   
   notes             String?
   

@@ -156,7 +156,7 @@ export default function FarmDashboard() {
           <p className="text-gray-600 mt-1">Track production, aging, and farm experiences</p>
         </div>
         <Link
-          href="/dashboard/farm/batches/new"
+          href="/dashboard/farm/batches"
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors"
         >
           <Milk className="w-5 h-5" />
@@ -231,7 +231,7 @@ export default function FarmDashboard() {
               <Factory className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-4">No active batches</p>
               <Link
-                href="/dashboard/farm/batches/new"
+                href="/dashboard/farm/batches"
                 className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
                 Start New Batch
